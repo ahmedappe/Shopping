@@ -565,3 +565,11 @@ create policy "payment-slips: owner or admin read" on storage.objects for select
   ));
 -- No delete policy for slips on purpose: customers cannot remove a slip once
 -- uploaded (keeps an audit trail for admins).
+
+-- ---------------------------------------------------------------------
+-- Create profiles for anyone who signed up before this script was run
+-- ---------------------------------------------------------------------
+insert into public.profiles (id, full_name, phone)
+select id, left(raw_user_meta_data ->> 'full_name', 120), left(raw_user_meta_data ->> 'phone', 30)
+from auth.users
+on conflict (id) do nothing;
