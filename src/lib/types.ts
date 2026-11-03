@@ -85,6 +85,12 @@ export type Order = {
   total: number;
   slip_path: string | null;
   slip_uploaded_at: string | null;
+  slip_bank: string | null;
+  slip_reference: string | null;
+  slip_amount: number | null;
+  slip_paid_at: string | null;
+  slip_verdict: "ok" | "review" | "unchecked" | null;
+  slip_checks: { checks?: Record<string, boolean | null>; warnings?: string[] } | null;
   admin_note: string | null;
   handover_method: "delivery" | "collection" | null;
   collection_location: string | null;

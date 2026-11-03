@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { Loader2, Upload } from "lucide-react";
 import { compressImage } from "@/lib/compress-client";
+import { readReceiptText, type OcrOutcome } from "@/lib/slip-ocr-client";
 import { uploadPaymentSlip } from "../actions";
 import type { ActionResult } from "@/lib/types";
 
@@ -13,6 +14,8 @@ export function SlipUpload({ orderId, hasSlip }: { orderId: string; hasSlip: boo
   const [file, setFile] = useState<File | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const [compressing, setCompressing] = useState(false);
+  const [ocr, setOcr] = useState<OcrOutcome | null>(null);
+  const [reading, setReading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => () => void (preview && URL.revokeObjectURL(preview)), [preview]);
@@ -20,12 +23,14 @@ export function SlipUpload({ orderId, hasSlip }: { orderId: string; hasSlip: boo
     if (state?.ok) {
       setFile(null);
       setPreview(null);
+      setOcr(null);
       if (inputRef.current) inputRef.current.value = "";
     }
   }, [state]);
 
   async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     setLocalError(null);
+    setOcr(null);
     const original = e.target.files?.[0];
     if (!original) return;
     setCompressing(true);
@@ -33,6 +38,11 @@ export function SlipUpload({ orderId, hasSlip }: { orderId: string; hasSlip: boo
       const compressed = await compressImage(original, 0.6, 1800);
       setFile(compressed);
       setPreview(URL.createObjectURL(compressed));
+      setCompressing(false);
+      // Read the receipt text now so the customer gets feedback before submitting.
+      setReading(true);
+      setOcr(await readReceiptText(compressed));
+      setReading(false);
     } catch (err) {
       setLocalError(err instanceof Error ? err.message : "Could not read that image.");
       setFile(null);
@@ -46,10 +56,12 @@ export function SlipUpload({ orderId, hasSlip }: { orderId: string; hasSlip: boo
     const fd = new FormData();
     fd.set("orderId", orderId);
     fd.set("slip", file);
+    fd.set("ocrStatus", ocr?.ok ? "done" : "failed");
+    fd.set("ocrText", ocr?.ok ? ocr.text : "");
     startTransition(() => formAction(fd));
   }
 
-  const busy = compressing || isPending;
+  const busy = compressing || reading || isPending;
 
   return (
     <div>
@@ -85,7 +97,7 @@ export function SlipUpload({ orderId, hasSlip }: { orderId: string; hasSlip: boo
 
       <button type="button" className="btn-brand mt-4 w-full py-3" disabled={!file || busy} onClick={submit}>
         {busy && <Loader2 className="size-4 animate-spin" />}
-        {compressing ? "Compressing…" : isPending ? "Uploading…" : "Submit receipt"}
+        {compressing ? "Compressing…" : reading ? "Checking receipt…" : isPending ? "Uploading…" : "Submit receipt"}
       </button>
     </div>
   );
