@@ -57,7 +57,7 @@ In Supabase → **Authentication → URL Configuration**:
 Copy `.env.example` to `.env.local` and fill in:
 - `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase → Project Settings → API
 - `NEXT_PUBLIC_SITE_URL` — `http://localhost:3000` locally, your domain in production
-- `NEXT_PUBLIC_STORE_NAME`, `NEXT_PUBLIC_CURRENCY` (default `MVR`)
+- `NEXT_PUBLIC_CURRENCY` (default `MVR`). The store name is set in `src/config/store.ts`.
 - `BANK_NAME`, `BANK_ACCOUNT_NAME`, `BANK_ACCOUNT_NUMBER` — shown to customers on their order page
 
 ### 5. Run locally

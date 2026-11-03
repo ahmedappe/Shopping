@@ -1,5 +1,5 @@
 export const STORE = {
-  name: process.env.NEXT_PUBLIC_STORE_NAME || "Kandhufathi",
+  name: "Kandhufathi",
   currency: process.env.NEXT_PUBLIC_CURRENCY || "MVR",
   timeZone: "Indian/Maldives",
   description: "Quality products, delivered to your door.",
