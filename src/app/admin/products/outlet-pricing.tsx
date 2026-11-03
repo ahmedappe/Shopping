@@ -6,7 +6,7 @@ import type { Outlet } from "@/lib/types";
 import { saveOutletPricing } from "./outlet-actions";
 
 export type PricingVariant = { id: string; option1: string | null; option2: string | null };
-export type PricingCell = { sold: boolean; price: string; stock: string };
+export type PricingCell = { sold: boolean; price: string; stock: string; godown: string };
 
 export function OutletPricing({
   productId,
@@ -27,7 +27,7 @@ export function OutletPricing({
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, start] = useTransition();
 
-  const get = (o: string, v: string): PricingCell => cells[`${o}:${v}`] ?? { sold: false, price: defaults[v] ?? "0", stock: "0" };
+  const get = (o: string, v: string): PricingCell => cells[`${o}:${v}`] ?? { sold: false, price: defaults[v] ?? "0", stock: "0", godown: "0" };
   const set = (o: string, v: string, patch: Partial<PricingCell>) =>
     setCells((c) => ({ ...c, [`${o}:${v}`]: { ...get(o, v), ...patch } }));
 
@@ -40,7 +40,7 @@ export function OutletPricing({
     const rows = outlets.flatMap((o) =>
       variants.map((v) => {
         const c = get(o.id, v.id);
-        return { variantId: v.id, outletId: o.id, sold: c.sold, price: c.price, stock: c.stock };
+        return { variantId: v.id, outletId: o.id, sold: c.sold, price: c.price, stock: c.stock, godown: c.godown };
       }),
     );
     start(async () => {
@@ -56,13 +56,14 @@ export function OutletPricing({
           <div key={o.id}>
             <h3 className="text-sm font-semibold">{o.name}</h3>
             <div className="mt-2 overflow-x-auto">
-              <table className="w-full min-w-[460px] text-sm">
+              <table className="w-full min-w-[540px] text-sm">
                 <thead className="text-left text-xs text-zinc-500 uppercase">
                   <tr>
                     <th className="py-1 pr-3">Variant</th>
                     <th className="px-2 py-1">Sold here</th>
                     <th className="px-2 py-1">Price</th>
-                    <th className="px-2 py-1">Stock</th>
+                    <th className="px-2 py-1">Shop stock</th>
+                    <th className="px-2 py-1">Godown</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
@@ -79,6 +80,9 @@ export function OutletPricing({
                         </td>
                         <td className="px-2 py-2">
                           <input type="number" step="1" min={0} value={c.stock} disabled={!c.sold} onChange={(e) => set(o.id, v.id, { stock: e.target.value })} className="input w-24" />
+                        </td>
+                        <td className="px-2 py-2">
+                          <input type="number" step="1" min={0} value={c.godown} onChange={(e) => set(o.id, v.id, { godown: e.target.value })} className="input w-24" aria-label={`Godown stock at ${o.name}`} />
                         </td>
                       </tr>
                     );

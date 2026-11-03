@@ -11,6 +11,7 @@ export const metadata: Metadata = { title: "Stock" };
 type Row = {
   outlet_id: string;
   stock: number;
+  godown_stock: number;
   is_active: boolean;
   variant: {
     id: string;
@@ -31,41 +32,49 @@ export default async function AdminStockPage({ searchParams }: { searchParams: P
   const { data } = outlets.length
     ? await supabase
         .from("outlet_variants")
-        .select("outlet_id, stock, is_active, variant:product_variants!inner(id, option1, option2, product:products!inner(id, name))")
+        .select("outlet_id, stock, godown_stock, is_active, variant:product_variants!inner(id, option1, option2, product:products!inner(id, name))")
         .in("outlet_id", outlets.map((o) => o.id))
         .limit(5000)
     : { data: [] };
 
   // One line per variant, one column per outlet.
-  const lines = new Map<string, { productId: string; name: string; label: string; stock: Map<string, number>; total: number }>();
+  const lines = new Map<string, { productId: string; name: string; label: string; stock: Map<string, { shop: number; godown: number }>; total: number }>();
   for (const r of (data ?? []) as unknown as Row[]) {
-    if (!r.variant?.product || !r.is_active) continue;
+    // Godown stock counts even where the item is not for sale (a transfer can arrive before it is switched on).
+    if (!r.variant?.product) continue;
+    if (!r.is_active && r.stock === 0 && r.godown_stock === 0) continue;
     const key = r.variant.id;
     let line = lines.get(key);
     if (!line) {
       line = { productId: r.variant.product.id, name: r.variant.product.name, label: variantLabel(r.variant), stock: new Map(), total: 0 };
       lines.set(key, line);
     }
-    line.stock.set(r.outlet_id, r.stock);
-    line.total += r.stock;
+    line.stock.set(r.outlet_id, { shop: r.stock, godown: r.godown_stock });
+    line.total += r.stock + r.godown_stock;
   }
 
   let list = [...lines.values()].sort((a, b) => a.name.localeCompare(b.name) || a.label.localeCompare(b.label));
   if (q) list = list.filter((l) => `${l.name} ${l.label}`.toLowerCase().includes(q.toLowerCase()));
-  if (lowOnly) list = list.filter((l) => [...l.stock.values()].some((s) => s <= STORE.lowStockThreshold));
+  if (lowOnly) list = list.filter((l) => [...l.stock.values()].some((s) => s.shop <= STORE.lowStockThreshold));
 
-  const cell = (n: number | undefined) =>
+  const cell = (n: { shop: number; godown: number } | undefined) =>
     n === undefined ? (
       <span className="text-zinc-300">–</span>
     ) : (
-      <span className={n === 0 ? "font-semibold text-red-600" : n <= STORE.lowStockThreshold ? "text-amber-600" : ""}>{n}</span>
+      <>
+        <span className={n.shop === 0 ? "font-semibold text-red-600" : n.shop <= STORE.lowStockThreshold ? "text-amber-600" : ""}>{n.shop}</span>
+        <span className="text-zinc-400"> / {n.godown}</span>
+      </>
     );
 
   return (
     <div>
-      <h1 className="text-2xl font-bold tracking-tight">Stock</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold tracking-tight">Stock</h1>
+        <Link href="/admin/stock/transfers" className="btn-primary">Stock transfers</Link>
+      </div>
       <p className="mt-1 text-sm text-zinc-500">
-        Count per outlet and the company total{user.isAdmin ? "" : " across your outlets"}. Change a count from the product page.
+        Each outlet shows shop stock / godown stock, then the company total (shop + godown){user.isAdmin ? "" : " across your outlets"}. Change a count from the product page.
       </p>
 
       <form className="mt-6 flex max-w-xl flex-wrap items-center gap-3">

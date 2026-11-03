@@ -41,13 +41,13 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     variantIds.length && outlets.length
       ? await supabase
           .from("outlet_variants")
-          .select("outlet_id, variant_id, price, stock, is_active")
+          .select("outlet_id, variant_id, price, stock, godown_stock, is_active")
           .in("variant_id", variantIds)
           .in("outlet_id", outlets.map((o) => o.id))
       : { data: [] };
   const initial: Record<string, PricingCell> = {};
-  for (const r of (ovRows ?? []) as { outlet_id: string; variant_id: string; price: number; stock: number; is_active: boolean }[]) {
-    initial[`${r.outlet_id}:${r.variant_id}`] = { sold: r.is_active, price: String(r.price), stock: String(r.stock) };
+  for (const r of (ovRows ?? []) as { outlet_id: string; variant_id: string; price: number; stock: number; godown_stock: number; is_active: boolean }[]) {
+    initial[`${r.outlet_id}:${r.variant_id}`] = { sold: r.is_active, price: String(r.price), stock: String(r.stock), godown: String(r.godown_stock) };
   }
   const defaults = Object.fromEntries(product.product_variants.map((v) => [v.id, String(v.price)]));
 

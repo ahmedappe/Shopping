@@ -12,6 +12,7 @@ const rowSchema = z.object({
   sold: z.boolean(),
   price: z.coerce.number().min(0).max(10_000_000),
   stock: z.coerce.number().int().min(0).max(1_000_000),
+  godown: z.coerce.number().int().min(0).max(1_000_000),
 });
 
 /** Saves price / stock / "sold here" for each variant at each outlet the user can work in. */
@@ -39,6 +40,7 @@ export async function saveOutletPricing(productId: string, rows: unknown): Promi
       variant_id: r.variantId,
       price: r.price,
       stock: r.stock,
+      godown_stock: r.godown,
       is_active: r.sold,
     })),
     { onConflict: "outlet_id,variant_id" },
