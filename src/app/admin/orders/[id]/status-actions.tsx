@@ -11,7 +11,7 @@ type Target = "approved" | "delivered" | "rejected" | "pending";
 const TRANSITIONS: Record<OrderStatus, Target[]> = {
   pending: ["approved", "rejected"],
   slip_uploaded: ["approved", "rejected", "pending"],
-  approved: ["delivered", "rejected"],
+  approved: ["delivered", "pending", "rejected"],
   delivered: [],
   rejected: [],
 };
@@ -36,6 +36,9 @@ export function StatusActions({ orderId, status }: { orderId: string; status: Or
   const [otherPlace, setOtherPlace] = useState("");
   const [isPending, startTransition] = useTransition();
   const targets = TRANSITIONS[status];
+  // After approval, "pending" means a payment problem was found: the customer must pay/upload again.
+  const labelFor = (t: Target) =>
+    t === "pending" && status === "approved" ? "Payment problem: ask for a new slip" : BUTTONS[t].label;
 
   if (targets.length === 0) {
     return (
@@ -87,7 +90,7 @@ export function StatusActions({ orderId, status }: { orderId: string; status: Or
     <section className="card p-5">
       <h2 className="font-semibold">Update status</h2>
       <label htmlFor="note" className="label mt-3">
-        Note to customer <span className="font-normal text-zinc-400">(required when rejecting)</span>
+        Note to customer <span className="font-normal text-zinc-400">(required when rejecting or asking for a new slip)</span>
       </label>
       <textarea
         id="note"
@@ -100,7 +103,8 @@ export function StatusActions({ orderId, status }: { orderId: string; status: Or
       />
       <div className="mt-4 grid gap-2">
         {targets.map((t) => {
-          const { label, className, icon: Icon } = BUTTONS[t];
+          const { className, icon: Icon } = BUTTONS[t];
+          const label = labelFor(t);
           return (
             <button key={t} type="button" className={`${className} w-full`} disabled={isPending} onClick={() => run(t)}>
               {pendingTarget === t ? <Loader2 className="size-4 animate-spin" /> : <Icon className="size-4" />}
