@@ -27,7 +27,11 @@ export async function setOrderStatus(input: unknown): Promise<ActionResult> {
     p_note: parsed.data.note ?? null,
     p_collection_location: parsed.data.status === "delivered" ? (parsed.data.collectionLocation ?? null) : null,
   });
-  if (error) return { ok: false, error: friendlyDbError(error.message) };
+  if (error) {
+    const friendly = friendlyDbError(error.message);
+    // Admins/managers get the underlying reason for unexpected failures, to make fixing them quick.
+    return { ok: false, error: friendly.startsWith("Something went wrong") ? `${friendly} (${error.message})` : friendly };
+  }
 
   revalidatePath(`/admin/orders/${parsed.data.orderId}`);
   revalidatePath("/admin/orders");
