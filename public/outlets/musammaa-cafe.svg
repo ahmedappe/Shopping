@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 300">
+<defs>
+<linearGradient id="bowlBody" x1="0" y1="0" x2="1" y2="0.35">
+<stop offset="0" stop-color="#A45C36"></stop>
+<stop offset="0.45" stop-color="#7F4225"></stop>
+<stop offset="1" stop-color="#5E2E18"></stop>
+</linearGradient>
+<linearGradient id="bowlRim" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#BC7A50"></stop>
+<stop offset="1" stop-color="#7F4225"></stop>
+</linearGradient>
+<linearGradient id="steam" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#A45C36"></stop>
+<stop offset="1" stop-color="#7A3E22"></stop>
+</linearGradient>
+</defs>
+<path d="M128 104 C112 88 142 76 128 58 C116 42 138 34 130 16" fill="none" stroke="url(#steam)" stroke-width="7" stroke-linecap="round"></path>
+<path d="M160 104 C144 86 176 72 160 52 C148 36 170 26 162 6" fill="none" stroke="url(#steam)" stroke-width="7" stroke-linecap="round"></path>
+<path d="M192 104 C176 88 206 76 192 58 C180 42 202 34 194 16" fill="none" stroke="url(#steam)" stroke-width="7" stroke-linecap="round"></path>
+<rect x="30" y="120" width="260" height="16" rx="5" fill="url(#bowlRim)"></rect>
+<path d="M46 142 H274 C274 202 228 238 160 238 C92 238 46 202 46 142 Z" fill="url(#bowlBody)"></path>
+<path d="M68 158 C72 190 94 212 124 222" fill="none" stroke="#E0AE88" stroke-width="8" stroke-linecap="round" opacity="0.45"></path>
+<rect x="118" y="238" width="84" height="12" rx="4" fill="#6B351C"></rect>
+<ellipse cx="54" cy="280" rx="25" ry="12" fill="url(#bowlBody)"></ellipse>
+<ellipse cx="50" cy="277" rx="12" ry="5" fill="#E0AE88" opacity="0.4"></ellipse>
+<rect x="72" y="276" width="206" height="8" rx="4" fill="url(#bowlRim)"></rect>
+</svg>

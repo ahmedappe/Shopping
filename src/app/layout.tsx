@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { STORE } from "@/config/store";
+import { OUTLET_ICONS } from "@/config/outlet-brands";
 import { getCurrentOutlet, getSiteOrigin } from "@/lib/outlet";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
@@ -14,6 +15,11 @@ export async function generateMetadata(): Promise<Metadata> {
     title: { default: name, template: `%s · ${name}` },
     description: STORE.description,
     openGraph: { siteName: name, type: "website" },
+    // Each outlet has its own tab icon; outlets without one use the default.
+    icons:
+      outlet && OUTLET_ICONS[outlet.slug]
+        ? { icon: OUTLET_ICONS[outlet.slug], apple: OUTLET_ICONS[outlet.slug] }
+        : { icon: "/icon.svg", shortcut: "/favicon.ico" },
   };
 }
 

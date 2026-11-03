@@ -4,4 +4,11 @@
  */
 export const OUTLET_LOGOS: Record<string, string> = {
   "maaloodhu-cafe": "/outlets/maaloodhu-cafe.svg",
+  "musammaa-cafe": "/outlets/musammaa-cafe.svg",
+};
+
+/** Browser-tab icon per outlet (square PNG). Outlets without one use the default icon. */
+export const OUTLET_ICONS: Record<string, string> = {
+  "maaloodhu-cafe": "/outlets/maaloodhu-cafe-icon.png",
+  "musammaa-cafe": "/outlets/musammaa-cafe-icon.png",
 };
