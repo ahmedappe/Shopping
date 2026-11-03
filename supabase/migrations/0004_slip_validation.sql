@@ -3,15 +3,19 @@
 -- and what looked off, and flag the same receipt being used on two orders.
 
 alter table public.orders
-  add column slip_bank       text,
-  add column slip_reference  text,
-  add column slip_amount     numeric(12,2),
-  add column slip_paid_at    timestamptz,
-  add column slip_verdict    text check (slip_verdict in ('ok', 'review', 'unchecked')),
-  add column slip_checks     jsonb;
+  add column if not exists slip_bank       text,
+  add column if not exists slip_reference  text,
+  add column if not exists slip_amount     numeric(12,2),
+  add column if not exists slip_paid_at    timestamptz,
+  add column if not exists slip_verdict    text check (slip_verdict in ('ok', 'review', 'unchecked')),
+  add column if not exists slip_checks     jsonb;
+
+-- Safe to run more than once. Remove the old "unique" version of the index if an
+-- earlier copy of this file was run (a reused receipt is flagged, not blocked).
+drop index if exists public.orders_slip_reference_uidx;
 
 -- Lookup index for spotting a receipt reused on another order (flagged, not blocked).
-create index orders_slip_reference_idx
+create index if not exists orders_slip_reference_idx
   on public.orders (slip_bank, slip_reference)
   where slip_reference is not null and status <> 'rejected';
 
