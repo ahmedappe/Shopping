@@ -93,11 +93,5 @@ export async function uploadPaymentSlip(_prev: ActionResult | null, formData: Fo
   revalidatePath(`/orders/${order.id}`);
   revalidatePath("/orders");
   revalidatePath("/admin/orders");
-  if (slip && slip.verdict === "review") {
-    return {
-      ok: true,
-      message: `Receipt uploaded. We'll verify your payment shortly. Please double-check it's the right receipt: ${slip.warnings.join(" ")}`,
-    };
-  }
-  return { ok: true, message: "Receipt uploaded. We'll verify your payment shortly." };
+  return { ok: true, message: "Thank you! We've received your receipt and will confirm your payment shortly." };
 }
