@@ -5,7 +5,7 @@ import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { getBankDetails } from "@/config/store";
+import { bankDetailsFor } from "@/config/store";
 import { SLIP_BUCKET } from "@/lib/storage";
 import { formatDate, formatPrice } from "@/lib/utils";
 import { StatusBadge } from "@/components/status-badge";
@@ -29,14 +29,18 @@ export default async function OrderPage({ params, searchParams }: Props) {
 
   const { data: orderData } = await supabase
     .from("orders")
-    .select("*, order_items(*)")
+    .select("*, order_items(*), outlet:outlets(name, bank_name, account_name, account_number)")
     .eq("id", id)
     .eq("user_id", user.id)
     .maybeSingle();
   if (!orderData) notFound();
 
-  const order = orderData as Order & { order_items: OrderItem[] };
-  const bank = getBankDetails();
+  const order = orderData as Order & {
+    order_items: OrderItem[];
+    outlet: { name: string; bank_name: string | null; account_name: string | null; account_number: string | null } | null;
+  };
+  // Each outlet has its own bank account (falls back to the single store account if none is saved)
+  const bank = bankDetailsFor(order.outlet);
   const canUpload = order.status === "pending" || order.status === "slip_uploaded";
 
   let slipUrl: string | null = null;

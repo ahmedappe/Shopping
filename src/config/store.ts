@@ -16,6 +16,23 @@ export function getBankDetails() {
   };
 }
 
+/**
+ * Bank details to show for an outlet. If the outlet has no account saved yet, falls back
+ * to the single account in the BANK_* settings (how the store worked before outlets).
+ */
+export function bankDetailsFor(
+  outlet?: { bank_name: string | null; account_name: string | null; account_number: string | null } | null,
+) {
+  if (outlet?.account_number) {
+    return {
+      bankName: outlet.bank_name ?? "",
+      accountName: outlet.account_name ?? "",
+      accountNumber: outlet.account_number,
+    };
+  }
+  return getBankDetails();
+}
+
 /** Places a customer can collect an order from. Edit this list to add more. */
 export const COLLECTION_POINTS = ["Shop", "Godown"] as const;
 

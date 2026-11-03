@@ -73,6 +73,7 @@ export type Order = {
   id: string;
   order_number: string;
   user_id: string;
+  outlet_id: string | null;
   status: OrderStatus;
   customer_name: string;
   phone: string;
@@ -121,3 +122,19 @@ export type OrderHistory = {
 };
 
 export type ActionResult = { ok: true; message?: string } | { ok: false; error: string };
+
+export type Outlet = {
+  id: string;
+  name: string;
+  slug: string;
+  /** Domains that open this outlet's store, e.g. shop.northjugo.mv */
+  hostnames: string[];
+  bank_name: string | null;
+  account_name: string | null;
+  account_number: string | null;
+  /** null = use the store-wide delivery setting */
+  delivery_fee: number | null;
+  free_delivery_threshold: number | null;
+  is_active: boolean;
+  sort_order: number;
+};

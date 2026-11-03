@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { STORE } from "@/config/store";
 import { sanitizeSearch } from "@/lib/utils";
+import { getCurrentOutlet } from "@/lib/outlet";
 import type { Category, ProductDetail, ProductListing } from "@/lib/types";
 
 const LISTING_COLUMNS =
@@ -18,10 +19,13 @@ export async function getCategories(): Promise<Category[]> {
 }
 
 export async function getFeaturedProducts(limit = 8): Promise<ProductListing[]> {
+  const { outlet } = await getCurrentOutlet();
+  if (!outlet) return [];
   const supabase = await createClient();
   const { data } = await supabase
-    .from("product_listing")
+    .from("outlet_product_listing")
     .select(LISTING_COLUMNS)
+    .eq("outlet_id", outlet.id)
     .eq("is_active", true)
     .eq("is_featured", true)
     .gt("variant_count", 0)
@@ -31,10 +35,13 @@ export async function getFeaturedProducts(limit = 8): Promise<ProductListing[]> 
 }
 
 export async function getNewArrivals(limit = 8): Promise<ProductListing[]> {
+  const { outlet } = await getCurrentOutlet();
+  if (!outlet) return [];
   const supabase = await createClient();
   const { data } = await supabase
-    .from("product_listing")
+    .from("outlet_product_listing")
     .select(LISTING_COLUMNS)
+    .eq("outlet_id", outlet.id)
     .eq("is_active", true)
     .gt("variant_count", 0)
     .order("created_at", { ascending: false })
@@ -60,14 +67,18 @@ export const SORT_OPTIONS = {
 } as const;
 
 export async function searchProducts(params: ProductSearchParams) {
+  const { outlet } = await getCurrentOutlet();
   const supabase = await createClient();
   const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
   const from = (page - 1) * STORE.pageSize;
   const to = from + STORE.pageSize - 1;
 
+  if (!outlet) return { products: [] as ProductListing[], total: 0, page, pageCount: 1 };
+
   let query = supabase
-    .from("product_listing")
+    .from("outlet_product_listing")
     .select(LISTING_COLUMNS, { count: "exact" })
+    .eq("outlet_id", outlet.id)
     .eq("is_active", true)
     .gt("variant_count", 0);
 
@@ -101,6 +112,8 @@ export async function searchProducts(params: ProductSearchParams) {
 
 export async function getProductBySlug(slug: string): Promise<ProductDetail | null> {
   if (!/^[a-z0-9-]{1,80}$/.test(slug)) return null;
+  const { outlet } = await getCurrentOutlet();
+  if (!outlet) return null;
   const supabase = await createClient();
   const { data } = await supabase
     .from("products")
@@ -113,15 +126,34 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail | nu
     .order("sort_order", { referencedTable: "product_variants" })
     .order("sort_order", { referencedTable: "product_images" })
     .maybeSingle();
-  return (data as ProductDetail | null) ?? null;
+  const product = data as ProductDetail | null;
+  if (!product) return null;
+
+  // Price and stock are per outlet. Only variants this outlet sells are shown.
+  const { data: rows } = await supabase
+    .from("outlet_variants")
+    .select("variant_id, price, stock")
+    .eq("outlet_id", outlet.id)
+    .eq("is_active", true)
+    .in("variant_id", product.product_variants.map((v) => v.id));
+  const here = new Map((rows ?? []).map((r) => [r.variant_id as string, r]));
+  const variants = product.product_variants
+    .filter((v) => here.has(v.id))
+    .map((v) => ({ ...v, price: Number(here.get(v.id)!.price), stock: here.get(v.id)!.stock as number }));
+  if (variants.length === 0) return null; // not sold at this outlet
+
+  return { ...product, product_variants: variants };
 }
 
 export async function getRelatedProducts(categoryId: string | null, excludeId: string, limit = 4) {
   if (!categoryId) return [];
+  const { outlet } = await getCurrentOutlet();
+  if (!outlet) return [];
   const supabase = await createClient();
   const { data } = await supabase
-    .from("product_listing")
+    .from("outlet_product_listing")
     .select(LISTING_COLUMNS)
+    .eq("outlet_id", outlet.id)
     .eq("is_active", true)
     .eq("category_id", categoryId)
     .neq("id", excludeId)

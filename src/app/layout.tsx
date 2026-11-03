@@ -2,15 +2,20 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { STORE } from "@/config/store";
+import { getCurrentOutlet, getSiteOrigin } from "@/lib/outlet";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
-  title: { default: STORE.name, template: `%s · ${STORE.name}` },
-  description: STORE.description,
-  openGraph: { siteName: STORE.name, type: "website" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const [{ outlet }, origin] = await Promise.all([getCurrentOutlet(), getSiteOrigin()]);
+  const name = outlet?.name ?? STORE.name;
+  return {
+    metadataBase: new URL(origin),
+    title: { default: name, template: `%s · ${name}` },
+    description: STORE.description,
+    openGraph: { siteName: name, type: "website" },
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: "#ffffff",

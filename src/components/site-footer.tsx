@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { STORE } from "@/config/store";
 import { Logo } from "@/components/logo";
+import { getCurrentOutlet } from "@/lib/outlet";
 
-export function SiteFooter() {
+export async function SiteFooter() {
+  const { outlet } = await getCurrentOutlet();
   return (
     <footer className="mt-24 border-t border-zinc-200 bg-zinc-50">
       <div className="container-page grid gap-8 py-12 text-sm text-zinc-600 sm:grid-cols-3">
         <div>
           <Logo className="text-zinc-900" />
-          <p className="mt-2 max-w-xs">{STORE.description}</p>
+          <p className="mt-2 max-w-xs">{outlet ? `${outlet.name} · ` : ""}{STORE.description}</p>
         </div>
         <div>
           <p className="font-semibold text-zinc-900">Shop</p>
@@ -28,7 +30,7 @@ export function SiteFooter() {
         </div>
       </div>
       <div className="border-t border-zinc-200 py-5 text-center text-xs text-zinc-500">
-        © {new Date().getFullYear()} {STORE.name}. All rights reserved.
+        © {new Date().getFullYear()} {outlet?.name ?? STORE.name}. All rights reserved.
       </div>
     </footer>
   );

@@ -17,6 +17,9 @@ export type CartItem = {
 
 type CartState = {
   items: CartItem[];
+  /** Outlet this cart was filled at. Prices and stock differ per outlet, so switching outlet empties the cart. */
+  outletId: string | null;
+  setOutlet: (outletId: string) => void;
   add: (item: Omit<CartItem, "quantity">, quantity?: number) => void;
   setQuantity: (variantId: string, quantity: number) => void;
   remove: (variantId: string) => void;
@@ -31,6 +34,13 @@ export const useCart = create<CartState>()(
   persist(
     (set) => ({
       items: [],
+      outletId: null,
+      setOutlet: (outletId) =>
+        set((state) =>
+          state.outletId === outletId
+            ? state
+            : { outletId, items: state.outletId === null ? state.items : [] },
+        ),
       add: (item, quantity = 1) =>
         set((state) => {
           const existing = state.items.find((i) => i.variantId === item.variantId);
@@ -67,7 +77,7 @@ export const useCart = create<CartState>()(
     {
       name: "cart-v1",
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ items: s.items }),
+      partialize: (s) => ({ items: s.items, outletId: s.outletId }),
     },
   ),
 );

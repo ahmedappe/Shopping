@@ -1,5 +1,6 @@
 "use server";
 
+import { getSiteOrigin } from "@/lib/outlet";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
@@ -41,8 +42,7 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
   const parsed = signUpSchema.safeParse(raw);
   if (!parsed.success) return { error: firstError(parsed.error), values };
 
-  const origin =
-    process.env.NEXT_PUBLIC_SITE_URL || (await headers()).get("origin") || "http://localhost:3000";
+  const origin = await getSiteOrigin();
   const next = safeRedirectPath(String(formData.get("next") ?? ""), "/");
 
   const supabase = await createClient();

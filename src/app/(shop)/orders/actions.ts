@@ -5,7 +5,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { processImage } from "@/lib/images";
 import { SLIP_BUCKET } from "@/lib/storage";
-import { getBankDetails } from "@/config/store";
+import { bankDetailsFor } from "@/config/store";
 import { evaluateSlipText, type SlipResult } from "@/lib/slip-validation";
 import { friendlyDbError } from "@/lib/utils";
 import type { ActionResult } from "@/lib/types";
@@ -24,7 +24,7 @@ export async function uploadPaymentSlip(_prev: ActionResult | null, formData: Fo
 
   const { data: order } = await supabase
     .from("orders")
-    .select("id, status, total, created_at")
+    .select("id, status, total, created_at, outlet:outlets(bank_name, account_name, account_number)")
     .eq("id", orderId.data)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -37,7 +37,9 @@ export async function uploadPaymentSlip(_prev: ActionResult | null, formData: Fo
   const ocrDone = formData.get("ocrStatus") === "done";
   const rawText = formData.get("ocrText");
   const ocrText = typeof rawText === "string" ? rawText.slice(0, 8000) : "";
-  const bankDetails = getBankDetails();
+  const bankDetails = bankDetailsFor(
+    order.outlet as unknown as { bank_name: string | null; account_name: string | null; account_number: string | null } | null,
+  );
   let slip: SlipResult | null = null;
   let duplicate = false;
   if (ocrDone) {

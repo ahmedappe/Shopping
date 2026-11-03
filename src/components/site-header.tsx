@@ -3,11 +3,17 @@ import { Search, User, LayoutDashboard } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { getSessionUser } from "@/lib/auth";
 import { getCategories } from "@/lib/catalog";
+import { getCurrentOutlet } from "@/lib/outlet";
+import { OutletSwitcher } from "@/components/outlet-switcher";
 import { CartButton } from "@/components/cart-button";
 import { MobileMenu } from "@/components/mobile-menu";
 
 export async function SiteHeader() {
-  const [user, categories] = await Promise.all([getSessionUser(), getCategories()]);
+  const [user, categories, { outlet, outlets, byDomain }] = await Promise.all([
+    getSessionUser(),
+    getCategories(),
+    getCurrentOutlet(),
+  ]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/90 backdrop-blur">
@@ -16,6 +22,11 @@ export async function SiteHeader() {
         <Link href="/" className="shrink-0" aria-label="Kandhufathi home">
           <Logo />
         </Link>
+        {outlet && (
+          <span className="hidden truncate border-l border-zinc-300 pl-4 text-sm font-medium text-zinc-600 sm:block">
+            {outlet.name}
+          </span>
+        )}
 
         <nav className="ml-6 hidden items-center gap-5 text-sm font-medium text-zinc-600 lg:flex">
           <Link href="/products" className="hover:text-zinc-900">
@@ -41,6 +52,9 @@ export async function SiteHeader() {
         </form>
 
         <div className="ml-auto flex items-center gap-1 md:ml-2">
+          {!byDomain && outlet && outlets.length > 1 && (
+            <OutletSwitcher outlets={outlets.map((o) => ({ slug: o.slug, name: o.name }))} currentSlug={outlet.slug} />
+          )}
           <Link href="/products" className="btn-ghost px-2.5 md:hidden" aria-label="Search">
             <Search className="size-5" />
           </Link>
