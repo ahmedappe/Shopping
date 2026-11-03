@@ -14,11 +14,11 @@ export default async function OrdersPage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("orders")
-    .select("id, order_number, status, total, created_at")
+    .select("id, order_number, status, total, created_at, handover_method")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(100);
-  const orders = (data ?? []) as Pick<Order, "id" | "order_number" | "status" | "total" | "created_at">[];
+  const orders = (data ?? []) as Pick<Order, "id" | "order_number" | "status" | "total" | "created_at" | "handover_method">[];
 
   return (
     <div className="container-page max-w-3xl py-10">
@@ -53,7 +53,7 @@ export default async function OrdersPage() {
                   <p className="font-medium">{o.order_number}</p>
                   <p className="text-sm text-zinc-500">{formatDate(o.created_at)}</p>
                 </div>
-                <StatusBadge status={o.status} />
+                <StatusBadge status={o.status} handover={o.handover_method} />
                 <p className="w-28 text-right font-semibold">{formatPrice(o.total)}</p>
                 <ChevronRight className="size-4 text-zinc-400" />
               </Link>

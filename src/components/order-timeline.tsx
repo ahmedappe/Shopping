@@ -9,7 +9,7 @@ const STEPS: { key: OrderStatus; label: string }[] = [
   { key: "delivered", label: "Delivered" },
 ];
 
-export function OrderTimeline({ status }: { status: OrderStatus }) {
+export function OrderTimeline({ status, collectedFrom }: { status: OrderStatus; collectedFrom?: string | null }) {
   if (status === "rejected") {
     return (
       <div className="flex items-center gap-3 rounded-xl bg-red-50 p-4 text-sm text-red-800 ring-1 ring-red-200">
@@ -18,10 +18,13 @@ export function OrderTimeline({ status }: { status: OrderStatus }) {
     );
   }
   const current = STEPS.findIndex((s) => s.key === status);
+  const steps = collectedFrom
+    ? STEPS.map((s) => (s.key === "delivered" ? { ...s, label: `Collected from ${collectedFrom}` } : s))
+    : STEPS;
 
   return (
     <ol className="grid grid-cols-4 gap-2">
-      {STEPS.map((step, i) => {
+      {steps.map((step, i) => {
         const done = i <= current;
         return (
           <li key={step.key} className="flex flex-col items-center text-center">

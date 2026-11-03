@@ -86,6 +86,8 @@ export type Order = {
   slip_path: string | null;
   slip_uploaded_at: string | null;
   admin_note: string | null;
+  handover_method: "delivery" | "collection" | null;
+  collection_location: string | null;
   created_at: string;
   updated_at: string;
 };

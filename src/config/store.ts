@@ -16,6 +16,9 @@ export function getBankDetails() {
   };
 }
 
+/** Places a customer can collect an order from. Edit this list to add more. */
+export const COLLECTION_POINTS = ["Shop", "Godown"] as const;
+
 export const ORDER_STATUS_META = {
   pending: { label: "Pending payment", tone: "amber" },
   slip_uploaded: { label: "Slip uploaded", tone: "blue" },

@@ -11,6 +11,7 @@ const schema = z.object({
   orderId: z.string().uuid(),
   status: z.enum(["pending", "approved", "delivered", "rejected"]),
   note: z.string().trim().max(1000).optional(),
+  collectionLocation: z.string().trim().min(1).max(100).optional(),
 });
 
 export async function setOrderStatus(input: unknown): Promise<ActionResult> {
@@ -24,6 +25,7 @@ export async function setOrderStatus(input: unknown): Promise<ActionResult> {
     p_order_id: parsed.data.orderId,
     p_status: parsed.data.status,
     p_note: parsed.data.note ?? null,
+    p_collection_location: parsed.data.status === "delivered" ? (parsed.data.collectionLocation ?? null) : null,
   });
   if (error) return { ok: false, error: friendlyDbError(error.message) };
 

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, Loader2, RotateCcw, Truck, X } from "lucide-react";
+import { Check, Loader2, PackageCheck, RotateCcw, Truck, X } from "lucide-react";
+import { COLLECTION_POINTS } from "@/config/store";
 import type { OrderStatus } from "@/lib/types";
 import { setOrderStatus } from "../actions";
 
@@ -30,7 +31,9 @@ const BUTTONS: Record<Target, { label: string; className: string; icon: typeof C
 export function StatusActions({ orderId, status }: { orderId: string; status: OrderStatus }) {
   const [note, setNote] = useState("");
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
-  const [pendingTarget, setPendingTarget] = useState<Target | null>(null);
+  const [pendingTarget, setPendingTarget] = useState<Target | "collected" | null>(null);
+  const [place, setPlace] = useState<string>(COLLECTION_POINTS[0]);
+  const [otherPlace, setOtherPlace] = useState("");
   const [isPending, startTransition] = useTransition();
   const targets = TRANSITIONS[status];
 
@@ -54,6 +57,27 @@ export function StatusActions({ orderId, status }: { orderId: string; status: Or
     startTransition(async () => {
       const res = await setOrderStatus({ orderId, status: target, note: note.trim() || undefined });
       setMessage(res.ok ? { ok: true, text: res.message ?? "Updated." } : { ok: false, text: res.error });
+      if (res.ok) setNote("");
+      setPendingTarget(null);
+    });
+  }
+
+  function markCollected() {
+    const location = place === "__other" ? otherPlace.trim() : place;
+    if (!location) {
+      setMessage({ ok: false, text: "Type where the customer collected the order." });
+      return;
+    }
+    setMessage(null);
+    setPendingTarget("collected");
+    startTransition(async () => {
+      const res = await setOrderStatus({
+        orderId,
+        status: "delivered",
+        note: note.trim() || undefined,
+        collectionLocation: location,
+      });
+      setMessage(res.ok ? { ok: true, text: `Marked as collected from ${location}.` } : { ok: false, text: res.error });
       if (res.ok) setNote("");
       setPendingTarget(null);
     });
@@ -85,6 +109,42 @@ export function StatusActions({ orderId, status }: { orderId: string; status: Or
           );
         })}
       </div>
+      {status === "approved" && (
+        <div className="mt-5 border-t border-zinc-200 pt-4">
+          <p className="text-sm font-medium">Customer collected it instead?</p>
+          <label htmlFor="collect-place" className="label mt-2">
+            Collected from
+          </label>
+          <select
+            id="collect-place"
+            className="input"
+            value={place}
+            onChange={(e) => setPlace(e.target.value)}
+            disabled={isPending}
+          >
+            {COLLECTION_POINTS.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+            <option value="__other">Other place…</option>
+          </select>
+          {place === "__other" && (
+            <input
+              className="input mt-2"
+              placeholder="e.g. Hulhumalé branch"
+              maxLength={100}
+              value={otherPlace}
+              onChange={(e) => setOtherPlace(e.target.value)}
+              aria-label="Other collection place"
+            />
+          )}
+          <button type="button" className="btn-outline mt-3 w-full" disabled={isPending} onClick={markCollected}>
+            {pendingTarget === "collected" ? <Loader2 className="size-4 animate-spin" /> : <PackageCheck className="size-4" />}
+            Mark as collected
+          </button>
+        </div>
+      )}
       {message && (
         <p role="status" className={`mt-3 text-sm ${message.ok ? "text-green-700" : "text-red-600"}`}>
           {message.text}

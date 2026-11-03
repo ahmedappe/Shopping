@@ -27,7 +27,7 @@ export default async function AdminOrdersPage({
   const supabase = await createClient();
   let query = supabase
     .from("orders")
-    .select("id, order_number, customer_name, phone, city, status, total, created_at, slip_path", { count: "exact" })
+    .select("id, order_number, customer_name, phone, city, status, total, created_at, slip_path, handover_method", { count: "exact" })
     .order("created_at", { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
   if (status) query = query.eq("status", status);
@@ -38,7 +38,7 @@ export default async function AdminOrdersPage({
   const { data, count } = await query;
   const orders = (data ?? []) as Pick<
     Order,
-    "id" | "order_number" | "customer_name" | "phone" | "city" | "status" | "total" | "created_at" | "slip_path"
+    "id" | "order_number" | "customer_name" | "phone" | "city" | "status" | "total" | "created_at" | "slip_path" | "handover_method"
   >[];
 
   const tabHref = (s?: string) => {
@@ -96,7 +96,7 @@ export default async function AdminOrdersPage({
                 </td>
                 <td className="px-4 py-3 text-zinc-500">{formatDate(o.created_at, true)}</td>
                 <td className="px-4 py-3">
-                  <StatusBadge status={o.status} />
+                  <StatusBadge status={o.status} handover={o.handover_method} />
                 </td>
                 <td className="px-4 py-3 text-right font-medium">{formatPrice(o.total)}</td>
               </tr>

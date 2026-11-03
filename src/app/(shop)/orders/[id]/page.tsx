@@ -66,11 +66,11 @@ export default async function OrderPage({ params, searchParams }: Props) {
           <h1 className="text-2xl font-bold tracking-tight">Order {order.order_number}</h1>
           <p className="text-sm text-zinc-500">Placed {formatDate(order.created_at, true)}</p>
         </div>
-        <StatusBadge status={order.status} className="text-sm" />
+        <StatusBadge status={order.status} handover={order.handover_method} className="text-sm" />
       </div>
 
       <div className="mt-8">
-        <OrderTimeline status={order.status} />
+        <OrderTimeline status={order.status} collectedFrom={order.handover_method === "collection" ? order.collection_location : null} />
       </div>
 
       {order.admin_note && (order.status === "rejected" || order.status === "pending") && (

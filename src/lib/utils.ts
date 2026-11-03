@@ -67,6 +67,7 @@ export function friendlyDbError(message: string | undefined) {
     SLIP_NOT_ALLOWED: "A payment slip can no longer be uploaded for this order.",
     INVALID_PATH: "Upload failed. Please try again.",
     INVALID_TRANSITION: "That status change isn't allowed for this order.",
+    INVALID_LOCATION: "Collection place is too long.",
     FORBIDDEN: "You don't have permission to do that.",
   };
   for (const key of Object.keys(map)) if (message.includes(key)) return map[key];

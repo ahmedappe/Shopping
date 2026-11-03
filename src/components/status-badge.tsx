@@ -10,8 +10,19 @@ const toneClasses = {
   red: "bg-red-50 text-red-800 ring-red-200",
 } as const;
 
-export function StatusBadge({ status, className }: { status: OrderStatus; className?: string }) {
-  const meta = ORDER_STATUS_META[status];
+export function StatusBadge({
+  status,
+  handover,
+  className,
+}: {
+  status: OrderStatus;
+  handover?: "delivery" | "collection" | null;
+  className?: string;
+}) {
+  const meta =
+    status === "delivered" && handover === "collection"
+      ? ({ label: "Collected", tone: "emerald" } as const)
+      : ORDER_STATUS_META[status];
   return (
     <span
       className={cn(

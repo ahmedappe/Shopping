@@ -48,7 +48,12 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
           <h1 className="text-2xl font-bold tracking-tight">Order {order.order_number}</h1>
           <p className="text-sm text-zinc-500">Placed {formatDate(order.created_at, true)}</p>
         </div>
-        <StatusBadge status={order.status} className="text-sm" />
+        <div className="text-right">
+          <StatusBadge status={order.status} handover={order.handover_method} className="text-sm" />
+          {order.handover_method === "collection" && order.collection_location && (
+            <p className="mt-1 text-sm text-zinc-600">Collected from {order.collection_location}</p>
+          )}
+        </div>
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_380px]">

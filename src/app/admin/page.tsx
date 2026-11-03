@@ -29,7 +29,7 @@ export default async function AdminDashboard() {
     supabase.rpc("admin_dashboard_stats"),
     supabase
       .from("orders")
-      .select("id, order_number, customer_name, status, total, created_at")
+      .select("id, order_number, customer_name, status, total, created_at, handover_method")
       .order("created_at", { ascending: false })
       .limit(8),
     supabase
@@ -116,7 +116,7 @@ export default async function AdminDashboard() {
           </div>
           <table className="w-full text-sm">
             <tbody className="divide-y divide-zinc-100">
-              {((recent ?? []) as Pick<Order, "id" | "order_number" | "customer_name" | "status" | "total" | "created_at">[]).map((o) => (
+              {((recent ?? []) as Pick<Order, "id" | "order_number" | "customer_name" | "status" | "total" | "created_at" | "handover_method">[]).map((o) => (
                 <tr key={o.id} className="hover:bg-zinc-50">
                   <td className="px-5 py-3">
                     <Link href={`/admin/orders/${o.id}`} className="font-medium hover:underline">
@@ -125,7 +125,7 @@ export default async function AdminDashboard() {
                     <p className="text-xs text-zinc-500">{o.customer_name}</p>
                   </td>
                   <td className="px-2 py-3 text-zinc-500">{formatDate(o.created_at)}</td>
-                  <td className="px-2 py-3"><StatusBadge status={o.status} /></td>
+                  <td className="px-2 py-3"><StatusBadge status={o.status} handover={o.handover_method} /></td>
                   <td className="px-5 py-3 text-right font-medium">{formatPrice(o.total)}</td>
                 </tr>
               ))}
