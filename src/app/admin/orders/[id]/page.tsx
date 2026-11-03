@@ -79,6 +79,7 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
                 <p className="mt-3 rounded-lg bg-zinc-50 p-3 text-sm">
                   Expected amount: <strong>{formatPrice(order.total)}</strong> · Reference: <strong>{order.order_number}</strong>
                 </p>
+                <SlipCheckPanel order={order} />
               </div>
             ) : (
               <p className="mt-2 text-sm text-zinc-500">The customer hasn&apos;t uploaded a slip yet.</p>
@@ -131,6 +132,74 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
           </section>
         </aside>
       </div>
+    </div>
+  );
+}
+
+const CHECK_LABELS: [string, string][] = [
+  ["looksLikeReceipt", "Looks like a bank receipt"],
+  ["bankRecognised", "Bank recognised"],
+  ["statusSuccess", "Shows success"],
+  ["amountMatches", "Amount matches order total"],
+  ["accountMatches", "Our account found"],
+  ["dateOk", "Date plausible"],
+  ["referenceFound", "Transaction reference read"],
+];
+
+/** Result of the automatic text check. Only a first filter, so the slip above still needs a human look. */
+function SlipCheckPanel({ order }: { order: Order }) {
+  if (!order.slip_verdict) return null;
+  const checks = order.slip_checks?.checks ?? {};
+  const warnings = order.slip_checks?.warnings ?? [];
+
+  const tone =
+    order.slip_verdict === "ok"
+      ? "border-green-200 bg-green-50 text-green-900"
+      : order.slip_verdict === "review"
+        ? "border-amber-200 bg-amber-50 text-amber-900"
+        : "border-zinc-200 bg-zinc-50 text-zinc-700";
+  const title =
+    order.slip_verdict === "ok"
+      ? "Automatic check: nothing odd found"
+      : order.slip_verdict === "review"
+        ? "Automatic check: please look closely"
+        : "Automatic check: not run (text could not be read)";
+
+  return (
+    <div className={`mt-3 rounded-lg border p-3 text-sm ${tone}`}>
+      <p className="font-semibold">{title}</p>
+      {warnings.length > 0 && (
+        <ul className="mt-1 list-disc pl-5">
+          {warnings.map((w) => (
+            <li key={w}>{w}</li>
+          ))}
+        </ul>
+      )}
+      {order.slip_verdict !== "unchecked" && (
+        <>
+          <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs">
+            <dt className="opacity-70">Bank</dt>
+            <dd>{order.slip_bank === "BML" ? "Bank of Maldives" : order.slip_bank === "MIB" ? "Maldives Islamic Bank" : "—"}</dd>
+            <dt className="opacity-70">Reference</dt>
+            <dd className="font-mono">{order.slip_reference ?? "—"}</dd>
+            <dt className="opacity-70">Amount read</dt>
+            <dd>{order.slip_amount != null ? formatPrice(order.slip_amount) : "—"}</dd>
+            <dt className="opacity-70">Paid at</dt>
+            <dd>{order.slip_paid_at ? formatDate(order.slip_paid_at, true) : "—"}</dd>
+          </dl>
+          <ul className="mt-2 grid gap-x-4 gap-y-0.5 text-xs sm:grid-cols-2">
+            {CHECK_LABELS.map(([key, label]) => {
+              const v = checks[key];
+              return (
+                <li key={key}>
+                  {v === true ? "✓" : v === false ? "✗" : "?"} {label}
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
+      <p className="mt-2 text-xs opacity-70">Text was read automatically and can be wrong. Always compare with the slip image.</p>
     </div>
   );
 }

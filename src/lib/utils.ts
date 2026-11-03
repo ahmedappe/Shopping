@@ -66,6 +66,7 @@ export function friendlyDbError(message: string | undefined) {
     ORDER_NOT_FOUND: "Order not found.",
     SLIP_NOT_ALLOWED: "A payment slip can no longer be uploaded for this order.",
     INVALID_PATH: "Upload failed. Please try again.",
+    DUPLICATE_SLIP: "This receipt has already been used for another order.",
     INVALID_TRANSITION: "That status change isn't allowed for this order.",
     INVALID_LOCATION: "Collection place is too long.",
     INVALID_ROLE: "That role doesn't exist.",
