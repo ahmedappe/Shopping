@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Search, User, LayoutDashboard } from "lucide-react";
-import { STORE } from "@/config/store";
+import { Logo } from "@/components/logo";
 import { getSessionUser } from "@/lib/auth";
 import { getCategories } from "@/lib/catalog";
 import { CartButton } from "@/components/cart-button";
@@ -13,8 +13,8 @@ export async function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/90 backdrop-blur">
       <div className="container-page flex h-16 items-center gap-4">
         <MobileMenu categories={categories.map((c) => ({ name: c.name, slug: c.slug }))} />
-        <Link href="/" className="shrink-0 text-lg font-bold tracking-tight">
-          {STORE.name}
+        <Link href="/" className="shrink-0" aria-label="Kandhufathi home">
+          <Logo />
         </Link>
 
         <nav className="ml-6 hidden items-center gap-5 text-sm font-medium text-zinc-600 lg:flex">

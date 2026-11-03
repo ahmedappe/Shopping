@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { STORE } from "@/config/store";
 import { AdminNav } from "./admin-nav";
+import { LogoMark } from "@/components/logo";
 
 export const metadata: Metadata = { title: { default: "Admin", template: `%s · Admin · ${STORE.name}` }, robots: { index: false } };
 
@@ -13,7 +14,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="min-h-dvh bg-zinc-50 lg:flex">
       <aside className="border-b border-zinc-200 bg-white lg:sticky lg:top-0 lg:h-dvh lg:w-60 lg:shrink-0 lg:border-r lg:border-b-0">
         <div className="flex h-14 items-center justify-between px-4 lg:h-16 lg:px-5">
-          <Link href="/admin" className="font-bold tracking-tight">
+          <Link href="/admin" className="flex items-center gap-2 font-bold tracking-tight">
+            <LogoMark className="size-7" />
             {STORE.name} <span className="font-normal text-zinc-500">Admin</span>
           </Link>
         </div>

@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { STORE } from "@/config/store";
+import { Logo } from "@/components/logo";
 
 export function SiteFooter() {
   return (
     <footer className="mt-24 border-t border-zinc-200 bg-zinc-50">
       <div className="container-page grid gap-8 py-12 text-sm text-zinc-600 sm:grid-cols-3">
         <div>
-          <p className="text-base font-bold text-zinc-900">{STORE.name}</p>
+          <Logo className="text-zinc-900" />
           <p className="mt-2 max-w-xs">{STORE.description}</p>
         </div>
         <div>

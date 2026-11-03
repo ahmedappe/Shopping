@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Kandhufathi"><title>Kandhufathi</title>
+  <path d="M22 28V18.5a10 10 0 0 1 20 0V28" fill="none" stroke="#0d9488" stroke-width="4" stroke-linecap="round"/>
+  <path d="M15 22H49a4 4 0 0 1 4 3.6L56 50a8 8 0 0 1-8 9H16a8 8 0 0 1-8-9L11 25.6A4 4 0 0 1 15 22Z" fill="#0d9488"/>
+  <circle cx="22" cy="28" r="2.2" fill="#fff"/><circle cx="42" cy="28" r="2.2" fill="#fff"/>
+  <path d="M15.5 40c3.5-4.5 7-4.5 10.5 0s7 4.5 10.5 0 7-4.5 10.5 0 3.5 4.5 3.5 4.5" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M17.5 49c3.5-4.5 7-4.5 10.5 0s7 4.5 10.5 0 7-4.5 10.5 0" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
