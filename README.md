@@ -82,6 +82,21 @@ Open http://localhost:3000.
 3. Add the same environment variables (set `NEXT_PUBLIC_SITE_URL` to your Vercel URL).
 4. Deploy, then add `https://YOUR-DOMAIN/auth/confirm` to Supabase redirect URLs and update the Site URL.
 
+## Roles and users
+
+| Role | Can do |
+|---|---|
+| Customer | Shop on the website |
+| Staff | View, add and edit products and categories (can't delete them, can't see orders) |
+| Manager | Everything except managing users: orders, payment slips, dashboard, products, categories |
+| Admin | Everything, including the **Users** page (create users, change roles, reset passwords, disable accounts) |
+
+Rules are enforced in the database (Row Level Security) as well as in the app.
+Creating users, resetting passwords and disabling accounts need `SUPABASE_SERVICE_ROLE_KEY`
+(Supabase → Project Settings → API keys → secret / service_role) set in Vercel.
+
+Database updates to run in order: `0001_init.sql`, `0002_order_collection.sql`, `0003_staff_roles_and_users.sql`.
+
 ## Store settings
 Delivery fee and free-delivery threshold are in the `store_settings` table (defaults: 30 and free over 500). Change them in Supabase → Table Editor → `store_settings`.
 

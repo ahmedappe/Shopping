@@ -2,22 +2,25 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Package, ShoppingCart, Tags, Store } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, Store, Tags, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const LINKS = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
-  { href: "/admin/products", label: "Products", icon: Package },
-  { href: "/admin/categories", label: "Categories", icon: Tags },
-];
+type Role = "customer" | "staff" | "manager" | "admin";
 
-export function AdminNav() {
+const LINKS = [
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true, roles: ["manager", "admin"] },
+  { href: "/admin/orders", label: "Orders", icon: ShoppingCart, roles: ["manager", "admin"] },
+  { href: "/admin/products", label: "Products", icon: Package, roles: ["staff", "manager", "admin"] },
+  { href: "/admin/categories", label: "Categories", icon: Tags, roles: ["staff", "manager", "admin"] },
+  { href: "/admin/users", label: "Users", icon: Users, roles: ["admin"] },
+] as const;
+
+export function AdminNav({ role }: { role: Role }) {
   const pathname = usePathname();
   return (
     <nav className="flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-col lg:pb-0">
-      {LINKS.map(({ href, label, icon: Icon, exact }) => {
-        const active = exact ? pathname === href : pathname.startsWith(href);
+      {LINKS.filter((l) => (l.roles as readonly string[]).includes(role)).map(({ href, label, icon: Icon, ...l }) => {
+        const active = "exact" in l && l.exact ? pathname === href : pathname.startsWith(href);
         return (
           <Link
             key={href}

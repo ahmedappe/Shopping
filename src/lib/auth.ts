@@ -3,6 +3,17 @@ import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
+export type Role = "customer" | "staff" | "manager" | "admin";
+
+export const ROLE_LABELS: Record<Role, string> = {
+  customer: "Customer",
+  staff: "Staff",
+  manager: "Manager",
+  admin: "Admin",
+};
+
+const ROLES: Role[] = ["customer", "staff", "manager", "admin"];
+
 export const getSessionUser = cache(async () => {
   const supabase = await createClient();
   const {
@@ -16,12 +27,20 @@ export const getSessionUser = cache(async () => {
     .eq("id", user.id)
     .single();
 
+  const role: Role = ROLES.includes(profile?.role as Role) ? (profile!.role as Role) : "customer";
+
   return {
     id: user.id,
     email: user.email ?? null,
     fullName: (profile?.full_name as string | null) ?? null,
     phone: (profile?.phone as string | null) ?? null,
-    isAdmin: profile?.role === "admin",
+    role,
+    /** Admin only: create and manage users. */
+    isAdmin: role === "admin",
+    /** Manager or admin: orders, payment slips, dashboard, deleting products. */
+    canManageStore: role === "manager" || role === "admin",
+    /** Staff, manager or admin: view, add and edit products and categories. */
+    canEditCatalog: role === "staff" || role === "manager" || role === "admin",
   };
 });
 
@@ -33,15 +52,34 @@ export async function requireUser(nextPath = "/") {
   return user;
 }
 
-/** Use in admin pages and EVERY admin server action. RLS enforces it again in the DB. */
-export async function requireAdmin() {
+/*
+ * Page guards. Use one in every admin page. The database enforces the same
+ * rules again through Row Level Security, so these are a second layer.
+ */
+async function requireLevel(check: (u: SessionUser) => boolean, nextPath: string) {
   const user = await getSessionUser();
-  if (!user) redirect("/login?next=/admin");
-  if (!user.isAdmin) notFound();
+  if (!user) redirect(`/login?next=${encodeURIComponent(nextPath)}`);
+  if (!check(user)) {
+    // Staff who open a page above their level go to products instead of a 404
+    if (user.canEditCatalog) redirect("/admin/products");
+    notFound();
+  }
   return user;
 }
 
-/** For server actions: returns null instead of redirecting. */
+export const requireCatalogEditor = () => requireLevel((u) => u.canEditCatalog, "/admin");
+export const requireManager = () => requireLevel((u) => u.canManageStore, "/admin");
+export const requireAdmin = () => requireLevel((u) => u.isAdmin, "/admin/users");
+
+/* Server-action guards: return null instead of redirecting. */
+export async function getCatalogEditorOrNull() {
+  const user = await getSessionUser();
+  return user?.canEditCatalog ? user : null;
+}
+export async function getManagerOrNull() {
+  const user = await getSessionUser();
+  return user?.canManageStore ? user : null;
+}
 export async function getAdminOrNull() {
   const user = await getSessionUser();
   return user?.isAdmin ? user : null;

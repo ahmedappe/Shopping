@@ -112,3 +112,32 @@ export const categorySchema = z.object({
 export function firstError(error: z.ZodError) {
   return error.issues[0]?.message ?? "Invalid input";
 }
+
+export const ROLE_VALUES = ["customer", "staff", "manager", "admin"] as const;
+
+const passwordSchema = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .max(72, "Password is too long")
+  .regex(/[A-Za-z]/, "Password must contain a letter")
+  .regex(/[0-9]/, "Password must contain a number");
+
+export const createUserSchema = z.object({
+  fullName: trimmed(2, 120, "Name"),
+  email: z.string().trim().toLowerCase().email("Enter a valid email"),
+  phone: z.union([z.literal(""), z.string().trim().regex(/^\+?[0-9 ]{7,15}$/, "Enter a valid phone number")]),
+  password: passwordSchema,
+  role: z.enum(ROLE_VALUES),
+});
+
+export const updateUserSchema = z.object({
+  userId: z.string().uuid(),
+  fullName: trimmed(2, 120, "Name"),
+  phone: z.union([z.literal(""), z.string().trim().regex(/^\+?[0-9 ]{7,15}$/, "Enter a valid phone number")]),
+  role: z.enum(ROLE_VALUES),
+});
+
+export const resetPasswordSchema = z.object({
+  userId: z.string().uuid(),
+  password: passwordSchema,
+});

@@ -3,7 +3,7 @@
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getAdminOrNull } from "@/lib/auth";
+import { getCatalogEditorOrNull, getManagerOrNull } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { processImage } from "@/lib/images";
 import { PRODUCT_BUCKET } from "@/lib/storage";
@@ -22,7 +22,7 @@ function refreshProduct(slug?: string) {
 export type SaveProductResult = { ok: true; id: string } | { ok: false; error: string };
 
 export async function saveProduct(id: string | null, input: unknown): Promise<SaveProductResult> {
-  if (!(await getAdminOrNull())) return { ok: false, error: "Not authorised." };
+  if (!(await getCatalogEditorOrNull())) return { ok: false, error: "Not authorised." };
   if (id && !uuid.safeParse(id).success) return { ok: false, error: "Invalid product." };
 
   const parsed = productSchema.safeParse(input);
@@ -100,7 +100,7 @@ function dbMessage(code?: string, what: "product" | "variant" = "product") {
 }
 
 export async function deleteProduct(id: string): Promise<ActionResult> {
-  if (!(await getAdminOrNull())) return { ok: false, error: "Not authorised." };
+  if (!(await getManagerOrNull())) return { ok: false, error: "Only managers and admins can delete products." };
   if (!uuid.safeParse(id).success) return { ok: false, error: "Invalid product." };
 
   const supabase = await createClient();
@@ -118,7 +118,7 @@ export async function deleteProduct(id: string): Promise<ActionResult> {
 // ---------------------------------------------------------------- images
 
 export async function uploadProductImage(formData: FormData): Promise<ActionResult> {
-  if (!(await getAdminOrNull())) return { ok: false, error: "Not authorised." };
+  if (!(await getCatalogEditorOrNull())) return { ok: false, error: "Not authorised." };
   const productId = uuid.safeParse(formData.get("productId"));
   const file = formData.get("file");
   if (!productId.success) return { ok: false, error: "Invalid product." };
@@ -162,7 +162,7 @@ export async function uploadProductImage(formData: FormData): Promise<ActionResu
 }
 
 export async function deleteProductImage(imageId: string): Promise<ActionResult> {
-  if (!(await getAdminOrNull())) return { ok: false, error: "Not authorised." };
+  if (!(await getCatalogEditorOrNull())) return { ok: false, error: "Not authorised." };
   if (!uuid.safeParse(imageId).success) return { ok: false, error: "Invalid image." };
 
   const supabase = await createClient();
@@ -179,7 +179,7 @@ export async function deleteProductImage(imageId: string): Promise<ActionResult>
 }
 
 export async function reorderProductImages(productId: string, orderedIds: string[]): Promise<ActionResult> {
-  if (!(await getAdminOrNull())) return { ok: false, error: "Not authorised." };
+  if (!(await getCatalogEditorOrNull())) return { ok: false, error: "Not authorised." };
   const parsed = z.object({ productId: uuid, ids: z.array(uuid).max(12) }).safeParse({ productId, ids: orderedIds });
   if (!parsed.success) return { ok: false, error: "Invalid request." };
 

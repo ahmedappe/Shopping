@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getAdminOrNull } from "@/lib/auth";
+import { getCatalogEditorOrNull, getManagerOrNull } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { categorySchema, firstError } from "@/lib/validation";
 import { slugify } from "@/lib/utils";
@@ -24,7 +24,7 @@ function refresh() {
 }
 
 export async function saveCategory(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
-  if (!(await getAdminOrNull())) return { ok: false, error: "Not authorised." };
+  if (!(await getCatalogEditorOrNull())) return { ok: false, error: "Not authorised." };
   const parsed = parse(formData);
   if (!parsed.success) return { ok: false, error: firstError(parsed.error) };
 
@@ -49,7 +49,7 @@ export async function saveCategory(_prev: ActionResult | null, formData: FormDat
 }
 
 export async function deleteCategory(id: string): Promise<ActionResult> {
-  if (!(await getAdminOrNull())) return { ok: false, error: "Not authorised." };
+  if (!(await getManagerOrNull())) return { ok: false, error: "Only managers and admins can delete categories." };
   const parsed = z.string().uuid().safeParse(id);
   if (!parsed.success) return { ok: false, error: "Invalid category." };
 

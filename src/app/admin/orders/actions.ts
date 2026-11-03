@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getAdminOrNull } from "@/lib/auth";
+import { getManagerOrNull } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { friendlyDbError } from "@/lib/utils";
 import type { ActionResult } from "@/lib/types";
@@ -15,7 +15,7 @@ const schema = z.object({
 });
 
 export async function setOrderStatus(input: unknown): Promise<ActionResult> {
-  if (!(await getAdminOrNull())) return { ok: false, error: "Not authorised." };
+  if (!(await getManagerOrNull())) return { ok: false, error: "Not authorised." };
   const parsed = schema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid request." };
 

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { requireAdmin } from "@/lib/auth";
+import { requireManager } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ORDER_STATUS_META } from "@/config/store";
 import { StatusBadge } from "@/components/status-badge";
@@ -18,7 +18,7 @@ export default async function AdminOrdersPage({
 }: {
   searchParams: Promise<{ status?: string; q?: string; page?: string }>;
 }) {
-  await requireAdmin();
+  await requireManager();
   const params = await searchParams;
   const status = STATUSES.includes(params.status as OrderStatus) ? (params.status as OrderStatus) : undefined;
   const q = sanitizeSearch(params.q ?? "");

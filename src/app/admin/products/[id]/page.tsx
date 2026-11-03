@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { z } from "zod";
-import { requireAdmin } from "@/lib/auth";
+import { requireCatalogEditor } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getCategories } from "@/lib/catalog";
 import { productImageUrl } from "@/lib/storage";
@@ -15,7 +15,7 @@ import type { Product, ProductImage, Variant } from "@/lib/types";
 export const metadata: Metadata = { title: "Edit product" };
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  const user = await requireCatalogEditor();
   const { id } = await params;
   if (!z.string().uuid().safeParse(id).success) notFound();
 
@@ -83,6 +83,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
         }}
       />
 
+      {user.canManageStore && (
       <section className="mt-10 rounded-xl border border-red-200 p-5">
         <h2 className="font-semibold text-red-700">Danger zone</h2>
         <p className="mt-1 text-sm text-zinc-600">
@@ -91,6 +92,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
         </p>
         <DeleteProductButton id={product.id} name={product.name} />
       </section>
+      )}
     </div>
   );
 }

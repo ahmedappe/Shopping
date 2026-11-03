@@ -1,0 +1,52 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+import { z } from "zod";
+import { requireAdmin } from "@/lib/auth";
+import { hasAdminKey } from "@/lib/supabase/admin";
+import { formatDate } from "@/lib/utils";
+import { isDisabled, listUsers } from "../data";
+import { RoleBadge } from "../role-badge";
+import { UserManager } from "./user-manager";
+
+export const metadata: Metadata = { title: "Manage user" };
+
+export default async function AdminUserPage({ params }: { params: Promise<{ id: string }> }) {
+  const me = await requireAdmin();
+  const { id } = await params;
+  if (!z.string().uuid().safeParse(id).success) notFound();
+
+  const user = (await listUsers()).find((u) => u.id === id);
+  if (!user) notFound();
+  const isMe = user.id === me.id;
+
+  return (
+    <div className="max-w-3xl">
+      <Link href="/admin/users" className="inline-flex items-center gap-1.5 text-sm text-zinc-600 hover:text-zinc-900">
+        <ArrowLeft className="size-4" /> Users
+      </Link>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <h1 className="text-2xl font-bold tracking-tight">{user.full_name || user.email}</h1>
+        <RoleBadge role={user.role} />
+        {isDisabled(user) && <span className="text-sm font-semibold text-red-600">Disabled</span>}
+      </div>
+      <p className="mt-1 text-sm text-zinc-500">
+        {user.email} · Joined {formatDate(user.created_at)} · Last sign-in{" "}
+        {user.last_sign_in_at ? formatDate(user.last_sign_in_at, true) : "never"}
+      </p>
+
+      <UserManager
+        user={{
+          id: user.id,
+          fullName: user.full_name ?? "",
+          phone: user.phone ?? "",
+          role: user.role,
+          disabled: isDisabled(user),
+        }}
+        isMe={isMe}
+        hasKey={hasAdminKey()}
+      />
+    </div>
+  );
+}

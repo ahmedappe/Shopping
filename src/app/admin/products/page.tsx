@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { ImageOff, Plus } from "lucide-react";
-import { requireAdmin } from "@/lib/auth";
+import { requireCatalogEditor } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { productImageUrl } from "@/lib/storage";
 import { formatPrice, sanitizeSearch } from "@/lib/utils";
@@ -18,7 +18,7 @@ export default async function AdminProductsPage({
 }: {
   searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  await requireAdmin();
+  await requireCatalogEditor();
   const params = await searchParams;
   const q = sanitizeSearch(params.q ?? "");
   const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);

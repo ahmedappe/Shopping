@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { z } from "zod";
-import { requireAdmin } from "@/lib/auth";
+import { requireManager } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { SLIP_BUCKET } from "@/lib/storage";
 import { formatDate, formatPrice } from "@/lib/utils";
@@ -16,7 +16,7 @@ import type { Order, OrderHistory, OrderItem } from "@/lib/types";
 export const metadata: Metadata = { title: "Order" };
 
 export default async function AdminOrderPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  await requireManager();
   const { id } = await params;
   if (!z.string().uuid().safeParse(id).success) notFound();
 

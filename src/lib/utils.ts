@@ -68,6 +68,10 @@ export function friendlyDbError(message: string | undefined) {
     INVALID_PATH: "Upload failed. Please try again.",
     INVALID_TRANSITION: "That status change isn't allowed for this order.",
     INVALID_LOCATION: "Collection place is too long.",
+    INVALID_ROLE: "That role doesn't exist.",
+    CANNOT_CHANGE_OWN_ROLE: "You can't change your own role. Ask another admin.",
+    LAST_ADMIN: "You can't remove the last admin.",
+    USER_NOT_FOUND: "User not found.",
     FORBIDDEN: "You don't have permission to do that.",
   };
   for (const key of Object.keys(map)) if (message.includes(key)) return map[key];

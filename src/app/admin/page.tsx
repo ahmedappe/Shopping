@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AlertTriangle, Banknote, Clock, Package, ShoppingCart, Users } from "lucide-react";
-import { requireAdmin } from "@/lib/auth";
+import { requireManager } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, formatPrice, variantLabel } from "@/lib/utils";
 import { ORDER_STATUS_META, STORE } from "@/config/store";
@@ -22,7 +22,7 @@ type Stats = {
 };
 
 export default async function AdminDashboard() {
-  await requireAdmin();
+  await requireManager();
   const supabase = await createClient();
 
   const [{ data: statsData, error }, { data: recent }, { data: lowStock }] = await Promise.all([

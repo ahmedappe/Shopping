@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { requireAdmin } from "@/lib/auth";
+import { requireCatalogEditor } from "@/lib/auth";
 import { getCategories } from "@/lib/catalog";
 import { ProductForm } from "../product-form";
 
 export const metadata: Metadata = { title: "New product" };
 
 export default async function NewProductPage() {
-  await requireAdmin();
+  await requireCatalogEditor();
   const categories = await getCategories();
 
   return (

@@ -44,7 +44,7 @@ export async function SiteHeader() {
           <Link href="/products" className="btn-ghost px-2.5 md:hidden" aria-label="Search">
             <Search className="size-5" />
           </Link>
-          {user?.isAdmin && (
+          {user?.canEditCatalog && (
             <Link href="/admin" className="btn-ghost px-2.5" aria-label="Admin" title="Admin">
               <LayoutDashboard className="size-5" />
             </Link>

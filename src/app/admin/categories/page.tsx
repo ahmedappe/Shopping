@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { requireAdmin } from "@/lib/auth";
+import { requireCatalogEditor } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { CategoryForm, DeleteCategoryButton } from "./category-form";
 import type { Category } from "@/lib/types";
@@ -7,7 +7,7 @@ import type { Category } from "@/lib/types";
 export const metadata: Metadata = { title: "Categories" };
 
 export default async function AdminCategoriesPage() {
-  await requireAdmin();
+  const user = await requireCatalogEditor();
   const supabase = await createClient();
   const [{ data }, { data: counts }] = await Promise.all([
     supabase.from("categories").select("id,name,slug,description,sort_order").order("sort_order").order("name"),
@@ -41,9 +41,11 @@ export default async function AdminCategoriesPage() {
               <span className="text-sm text-brand-700 group-open:hidden">Edit</span>
             </summary>
             <CategoryForm category={c} />
-            <div className="mt-3 flex justify-end">
-              <DeleteCategoryButton id={c.id} name={c.name} />
-            </div>
+            {user.canManageStore && (
+              <div className="mt-3 flex justify-end">
+                <DeleteCategoryButton id={c.id} name={c.name} />
+              </div>
+            )}
           </details>
         ))}
         {categories.length === 0 && <p className="p-5 text-sm text-zinc-500">No categories yet.</p>}
