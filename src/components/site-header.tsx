@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { Search, User, LayoutDashboard } from "lucide-react";
-import { Logo } from "@/components/logo";
 import { getSessionUser } from "@/lib/auth";
 import { getCategories } from "@/lib/catalog";
 import { getCurrentOutlet } from "@/lib/outlet";
+import { OutletBrand } from "@/components/outlet-brand";
 import { OutletSwitcher } from "@/components/outlet-switcher";
 import { CartButton } from "@/components/cart-button";
 import { MobileMenu } from "@/components/mobile-menu";
@@ -22,14 +22,9 @@ export async function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/90 backdrop-blur">
       <div className="container-page flex h-16 items-center gap-4">
         <MobileMenu categories={categories.map((c) => ({ name: c.name, slug: c.slug }))} />
-        <Link href="/" className="shrink-0" aria-label="Kandhufathi home">
-          <Logo />
+        <Link href="/" className="min-w-0 shrink-0" aria-label={`${outlet?.name ?? "Store"} home`}>
+          <OutletBrand outlet={outlet} />
         </Link>
-        {outlet && (
-          <span className="hidden truncate border-l border-zinc-300 pl-4 text-sm font-medium text-zinc-600 sm:block">
-            {outlet.name}
-          </span>
-        )}
 
         <nav className="ml-6 hidden items-center gap-5 text-sm font-medium text-zinc-600 lg:flex">
           <Link href="/products" className="hover:text-zinc-900">

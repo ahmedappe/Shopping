@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { STORE } from "@/config/store";
-import { Logo } from "@/components/logo";
+import { OutletBrand } from "@/components/outlet-brand";
 import { getCurrentOutlet } from "@/lib/outlet";
 
 export async function SiteFooter() {
@@ -9,8 +9,8 @@ export async function SiteFooter() {
     <footer className="mt-24 border-t border-zinc-200 bg-zinc-50">
       <div className="container-page grid gap-8 py-12 text-sm text-zinc-600 sm:grid-cols-3">
         <div>
-          <Logo className="text-zinc-900" />
-          <p className="mt-2 max-w-xs">{outlet ? `${outlet.name} · ` : ""}{STORE.description}</p>
+          <OutletBrand outlet={outlet} className="text-zinc-900" />
+          <p className="mt-2 max-w-xs">{STORE.description}</p>
         </div>
         <div>
           <p className="font-semibold text-zinc-900">Shop</p>
