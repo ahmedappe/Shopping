@@ -43,6 +43,9 @@ export default async function AdminOutletsPage() {
               </div>
               <span className="text-sm text-brand-700 group-open:hidden">Edit</span>
             </summary>
+            <p className="mt-3 text-xs text-zinc-500">
+              Share link: <code className="rounded bg-zinc-100 px-1.5 py-0.5">/o/{o.slug}</code> (add your site address in front). It opens the store for this outlet.
+            </p>
             <OutletForm outlet={o} companies={companies} />
           </details>
         ))}
