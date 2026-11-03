@@ -13,8 +13,11 @@ declare
   v_old       public.order_status;
   v_location  text := nullif(trim(p_collection_location), '');
   v_note      text := nullif(trim(p_note), '');
+  -- Read the caller's role straight from profiles so this works whichever
+  -- earlier migrations have been run (no helper functions needed).
+  v_role      text := coalesce((select role::text from public.profiles where id = auth.uid()), '');
 begin
-  if not public.can_manage_store() then
+  if v_role not in ('manager', 'admin') then
     raise exception 'FORBIDDEN';
   end if;
 
@@ -40,7 +43,7 @@ begin
 
   -- Reopening an approved order is admin-only and needs a message for the customer.
   if v_old = 'approved' and p_status = 'pending' then
-    if not public.is_admin() then
+    if v_role <> 'admin' then
       raise exception 'FORBIDDEN';
     end if;
     if v_note is null then
