@@ -144,6 +144,7 @@ const CHECK_LABELS: [string, string][] = [
   ["accountMatches", "Our account found"],
   ["dateOk", "Date plausible"],
   ["referenceFound", "Transaction reference read"],
+  ["notDuplicate", "Not used on another order"],
 ];
 
 /** Result of the automatic text check. Only a first filter, so the slip above still needs a human look. */

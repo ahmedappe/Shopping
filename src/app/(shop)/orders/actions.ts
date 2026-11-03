@@ -33,12 +33,13 @@ export async function uploadPaymentSlip(_prev: ActionResult | null, formData: Fo
     return { ok: false, error: "A slip can no longer be uploaded for this order." };
   }
 
-  // --- basic receipt check (text read in the browser, judged here) ---
+  // --- basic receipt check (text read in the browser, judged here). Never blocks: problems are flagged for the admin. ---
   const ocrDone = formData.get("ocrStatus") === "done";
   const rawText = formData.get("ocrText");
   const ocrText = typeof rawText === "string" ? rawText.slice(0, 8000) : "";
   const bankDetails = getBankDetails();
   let slip: SlipResult | null = null;
+  let duplicate = false;
   if (ocrDone) {
     slip = evaluateSlipText(ocrText, {
       amount: Number(order.total),
@@ -46,14 +47,17 @@ export async function uploadPaymentSlip(_prev: ActionResult | null, formData: Fo
       accountName: bankDetails.accountName,
       orderCreatedAt: order.created_at as string,
     });
-    if (slip.verdict === "reject") return { ok: false, error: slip.warnings[0] };
     if (slip.reference) {
       const { data: inUse } = await supabase.rpc("slip_reference_in_use", {
         p_order_id: order.id,
         p_bank: slip.bank,
         p_reference: slip.reference,
       });
-      if (inUse) return { ok: false, error: "This receipt has already been used for another order." };
+      duplicate = inUse === true;
+      if (duplicate) {
+        slip.warnings.push("This receipt reference is already attached to another order.");
+        slip.verdict = "review";
+      }
     }
   }
 
@@ -82,7 +86,7 @@ export async function uploadPaymentSlip(_prev: ActionResult | null, formData: Fo
     p_amount: slip?.amount ?? null,
     p_paid_at: slip?.paidAt ?? null,
     p_verdict: slip ? (slip.verdict === "ok" ? "ok" : "review") : "unchecked",
-    p_checks: slip ? { checks: slip.checks, warnings: slip.warnings } : null,
+    p_checks: slip ? { checks: { ...slip.checks, notDuplicate: !duplicate }, warnings: slip.warnings } : null,
   });
   if (error) return { ok: false, error: friendlyDbError(error.message) };
 

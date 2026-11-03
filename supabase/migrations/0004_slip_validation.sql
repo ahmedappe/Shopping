@@ -1,6 +1,6 @@
 -- Basic automatic checks on uploaded payment slips (text recognition result).
 -- The admin still reviews every slip; these columns just show what was read
--- and what looked off, and let us block the same receipt being used twice.
+-- and what looked off, and flag the same receipt being used on two orders.
 
 alter table public.orders
   add column slip_bank       text,
@@ -10,9 +10,8 @@ alter table public.orders
   add column slip_verdict    text check (slip_verdict in ('ok', 'review', 'unchecked')),
   add column slip_checks     jsonb;
 
--- One receipt (bank + transaction reference) can back only one live order.
--- A rejected order releases its reference.
-create unique index orders_slip_reference_uidx
+-- Lookup index for spotting a receipt reused on another order (flagged, not blocked).
+create index orders_slip_reference_idx
   on public.orders (slip_bank, slip_reference)
   where slip_reference is not null and status <> 'rejected';
 
@@ -80,21 +79,17 @@ begin
     raise exception 'INVALID_PATH';
   end if;
 
-  begin
-    update public.orders
-       set slip_path = p_path,
-           slip_uploaded_at = now(),
-           status = 'slip_uploaded',
-           slip_bank = p_bank,
-           slip_reference = p_reference,
-           slip_amount = p_amount,
-           slip_paid_at = p_paid_at,
-           slip_verdict = p_verdict,
-           slip_checks = p_checks
-     where id = p_order_id;
-  exception when unique_violation then
-    raise exception 'DUPLICATE_SLIP';
-  end;
+  update public.orders
+     set slip_path = p_path,
+         slip_uploaded_at = now(),
+         status = 'slip_uploaded',
+         slip_bank = p_bank,
+         slip_reference = p_reference,
+         slip_amount = p_amount,
+         slip_paid_at = p_paid_at,
+         slip_verdict = p_verdict,
+         slip_checks = p_checks
+   where id = p_order_id;
 
   if v_status <> 'slip_uploaded' then
     insert into public.order_status_history (order_id, from_status, to_status, changed_by)

@@ -41,8 +41,8 @@ export type SlipResult = {
   checks: SlipChecks;
   /** Human-readable problems, shown to the customer and the admin. */
   warnings: string[];
-  /** "reject" blocks the upload; "review" and "ok" let it through. */
-  verdict: "ok" | "review" | "reject";
+  /** Never blocks the upload: "review" means the admin should look closely. */
+  verdict: "ok" | "review";
 };
 
 const MV_OFFSET = "+05:00"; // Maldives time; receipts print local time
@@ -170,7 +170,7 @@ export function evaluateSlipText(rawText: string, expected: SlipExpectation, now
 
   const warnings: string[] = [];
   if (!looksLikeReceipt) {
-    warnings.push("This doesn't look like a bank transfer receipt. Please upload the confirmation screen from your banking app.");
+    warnings.push("This doesn't look like a bank transfer receipt. If it's the wrong image, please upload the confirmation screen from your banking app.");
   } else {
     if (failedWord) warnings.push("The receipt appears to show an unsuccessful transfer.");
     if (amountMatches === false) warnings.push(`We couldn't find the order total (${expected.amount.toFixed(2)}) on this receipt.`);
@@ -181,7 +181,7 @@ export function evaluateSlipText(rawText: string, expected: SlipExpectation, now
     if (!reference) warnings.push("We couldn't read a transaction reference.");
   }
 
-  const verdict: SlipResult["verdict"] = !looksLikeReceipt ? "reject" : warnings.length ? "review" : "ok";
+  const verdict: SlipResult["verdict"] = warnings.length ? "review" : "ok";
 
   return {
     bank,

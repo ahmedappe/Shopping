@@ -97,7 +97,7 @@ Creating users, resetting passwords and disabling accounts need `SUPABASE_SERVIC
 
 Database updates to run in order: `0001_init.sql`, `0002_order_collection.sql`, `0003_staff_roles_and_users.sql`, `0004_slip_validation.sql`.
 
-**Receipt checks:** when a customer uploads a bank receipt, the browser reads its text (Tesseract OCR) and the server checks amount, our account, date and reference. Obvious non-receipts are rejected, a reused receipt is blocked, and anything odd is flagged for you on the order page. It is only a first filter; always still compare the slip image. Run `0004_slip_validation.sql` in the Supabase SQL editor **before** deploying this version.
+**Receipt checks:** when a customer uploads a bank receipt, the browser reads its text (Tesseract OCR) and the server checks amount, our account, date and reference. Nothing is blocked: an image that isn't a receipt, a wrong amount or account, an odd date or a reused receipt is still accepted but flagged for you on the order page and orders list. It is only a first filter; always still compare the slip image. Run `0004_slip_validation.sql` in the Supabase SQL editor **before** deploying this version.
 
 ## Store settings
 Delivery fee and free-delivery threshold are in the `store_settings` table (defaults: 30 and free over 500). Change them in Supabase → Table Editor → `store_settings`.
