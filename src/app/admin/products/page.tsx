@@ -3,6 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { ImageOff, Plus } from "lucide-react";
 import { requireCatalogEditor } from "@/lib/auth";
+import { getAdminOutlets, pickOutlet } from "@/lib/admin-outlets";
+import { OutletFilter } from "@/components/admin/outlet-filter";
 import { createClient } from "@/lib/supabase/server";
 import { productImageUrl } from "@/lib/storage";
 import { formatPrice, sanitizeSearch } from "@/lib/utils";
@@ -16,21 +18,26 @@ const PAGE_SIZE = 25;
 export default async function AdminProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; outlet?: string }>;
 }) {
-  await requireCatalogEditor();
+  const user = await requireCatalogEditor();
   const params = await searchParams;
+  const outlets = await getAdminOutlets(user);
+  const { selected } = pickOutlet(outlets, params.outlet);
   const q = sanitizeSearch(params.q ?? "");
   const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
 
   const supabase = await createClient();
+  // With an outlet picked: that outlet's price and stock (only items it sells).
+  // Without: the whole catalogue (prices and stock differ per outlet — see the Stock page).
   let query = supabase
-    .from("product_listing")
+    .from(selected ? "outlet_product_listing" : "product_listing")
     .select("id,name,slug,is_active,is_featured,category_name,min_price,max_price,total_stock,variant_count,image_path", {
       count: "exact",
     })
     .order("created_at", { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+  if (selected) query = query.eq("outlet_id", selected.id);
   if (q) query = query.ilike("name", `%${q}%`);
   const { data, count } = await query;
   const products = (data ?? []) as ProductListing[];
@@ -44,7 +51,12 @@ export default async function AdminProductsPage({
         </Link>
       </div>
 
-      <form className="mt-6 max-w-sm">
+      <div className="mt-4">
+        <OutletFilter outlets={outlets} selectedSlug={selected?.slug} basePath="/admin/products" params={{ q: q || undefined }} allLabel="All items" />
+      </div>
+
+      <form className="mt-4 max-w-sm">
+        {selected && <input type="hidden" name="outlet" value={selected.slug} />}
         <input name="q" type="search" defaultValue={q} placeholder="Search products" className="input" />
       </form>
 
@@ -84,10 +96,19 @@ export default async function AdminProductsPage({
                   </td>
                   <td className="px-4 py-3 text-zinc-600">{p.category_name ?? "—"}</td>
                   <td className="px-4 py-3">
-                    {formatPrice(p.min_price)}
-                    {p.max_price !== p.min_price && ` – ${formatPrice(p.max_price)}`}
+                    {selected ? (
+                      <>
+                        {formatPrice(p.min_price)}
+                        {p.max_price !== p.min_price && ` – ${formatPrice(p.max_price)}`}
+                      </>
+                    ) : (
+                      <span className="text-zinc-400">varies</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
+                    {!selected ? (
+                      <span className="text-zinc-400">—</span>
+                    ) : (
                     <span
                       className={
                         p.total_stock === 0
@@ -99,6 +120,7 @@ export default async function AdminProductsPage({
                     >
                       {p.total_stock}
                     </span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     {p.is_active ? (
@@ -127,7 +149,7 @@ export default async function AdminProductsPage({
         page={page}
         pageCount={Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE))}
         basePath="/admin/products"
-        params={{ q: q || undefined }}
+        params={{ q: q || undefined, outlet: selected?.slug }}
       />
     </div>
   );

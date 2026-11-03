@@ -3,7 +3,6 @@
 import { getSiteOrigin } from "@/lib/outlet";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { signInSchema, signUpSchema, firstError } from "@/lib/validation";
 import { safeRedirectPath } from "@/lib/utils";

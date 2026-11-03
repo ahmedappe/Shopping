@@ -136,10 +136,10 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail | nu
     .eq("outlet_id", outlet.id)
     .eq("is_active", true)
     .in("variant_id", product.product_variants.map((v) => v.id));
-  const here = new Map((rows ?? []).map((r) => [r.variant_id as string, r]));
+  const here = new Map(((rows ?? []) as { variant_id: string; price: number | string; stock: number }[]).map((r) => [r.variant_id, r]));
   const variants = product.product_variants
     .filter((v) => here.has(v.id))
-    .map((v) => ({ ...v, price: Number(here.get(v.id)!.price), stock: here.get(v.id)!.stock as number }));
+    .map((v) => ({ ...v, price: Number(here.get(v.id)!.price), stock: here.get(v.id)!.stock }));
   if (variants.length === 0) return null; // not sold at this outlet
 
   return { ...product, product_variants: variants };

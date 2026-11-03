@@ -7,7 +7,9 @@ import { requireCatalogEditor } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getCategories } from "@/lib/catalog";
 import { productImageUrl } from "@/lib/storage";
+import { getAdminOutlets } from "@/lib/admin-outlets";
 import { ProductForm } from "../product-form";
+import { OutletPricing, type PricingCell } from "../outlet-pricing";
 import { ImageManager } from "../image-manager";
 import { DeleteProductButton } from "../delete-product-button";
 import type { Product, ProductImage, Variant } from "@/lib/types";
@@ -33,6 +35,22 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
   if (!data) notFound();
   const product = data as Product & { product_variants: Variant[]; product_images: ProductImage[] };
 
+  const outlets = await getAdminOutlets(user);
+  const variantIds = product.product_variants.map((v) => v.id);
+  const { data: ovRows } =
+    variantIds.length && outlets.length
+      ? await supabase
+          .from("outlet_variants")
+          .select("outlet_id, variant_id, price, stock, is_active")
+          .in("variant_id", variantIds)
+          .in("outlet_id", outlets.map((o) => o.id))
+      : { data: [] };
+  const initial: Record<string, PricingCell> = {};
+  for (const r of (ovRows ?? []) as { outlet_id: string; variant_id: string; price: number; stock: number; is_active: boolean }[]) {
+    initial[`${r.outlet_id}:${r.variant_id}`] = { sold: r.is_active, price: String(r.price), stock: String(r.stock) };
+  }
+  const defaults = Object.fromEntries(product.product_variants.map((v) => [v.id, String(v.price)]));
+
   return (
     <div className="max-w-4xl">
       <Link href="/admin/products" className="inline-flex items-center gap-1.5 text-sm text-zinc-600 hover:text-zinc-900">
@@ -55,6 +73,20 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
         <ImageManager
           productId={product.id}
           images={product.product_images.map((i) => ({ id: i.id, url: productImageUrl(i.path)! }))}
+        />
+      </section>
+
+      <section className="card mt-6 p-5">
+        <h2 className="font-semibold">Prices &amp; stock by outlet</h2>
+        <p className="text-xs text-zinc-500">
+          Tick &quot;Sold here&quot; for each outlet that sells this item, and set that outlet&apos;s own price and stock.
+        </p>
+        <OutletPricing
+          productId={product.id}
+          outlets={outlets}
+          variants={product.product_variants.map((v) => ({ id: v.id, option1: v.option1, option2: v.option2 }))}
+          initial={initial}
+          defaults={defaults}
         />
       </section>
 

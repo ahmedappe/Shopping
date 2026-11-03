@@ -22,7 +22,8 @@ function refreshProduct(slug?: string) {
 export type SaveProductResult = { ok: true; id: string } | { ok: false; error: string };
 
 export async function saveProduct(id: string | null, input: unknown): Promise<SaveProductResult> {
-  if (!(await getCatalogEditorOrNull())) return { ok: false, error: "Not authorised." };
+  const editor = await getCatalogEditorOrNull();
+  if (!editor) return { ok: false, error: "Not authorised." };
   if (id && !uuid.safeParse(id).success) return { ok: false, error: "Invalid product." };
 
   const parsed = productSchema.safeParse(input);
@@ -85,8 +86,26 @@ export async function saveProduct(id: string | null, input: unknown): Promise<Sa
     .filter(({ v }) => !(v.id && keptIds.has(v.id)))
     .map(({ v, index }) => toRow(v, index));
   if (inserts.length) {
-    const { error } = await supabase.from("product_variants").insert(inserts);
+    const { data: created, error } = await supabase.from("product_variants").insert(inserts).select("id, price, stock");
     if (error) return { ok: false, error: dbMessage(error.code, "variant") };
+
+    // New variants start out sold at every outlet this person works in (default price, entered stock).
+    // Other outlets can switch them on from the product page.
+    if (created?.length && editor.outletIds.length) {
+      const { error: ovError } = await supabase.from("outlet_variants").upsert(
+        created.flatMap((c) =>
+          editor.outletIds.map((outletId) => ({
+            outlet_id: outletId,
+            variant_id: c.id as string,
+            price: c.price as number,
+            stock: c.stock as number,
+            is_active: true,
+          })),
+        ),
+        { onConflict: "outlet_id,variant_id" },
+      );
+      if (ovError) return { ok: false, error: "Saved the product but could not add it to your outlets." };
+    }
   }
 
   refreshProduct(p.slug);

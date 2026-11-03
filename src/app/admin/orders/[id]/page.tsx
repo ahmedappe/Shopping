@@ -31,6 +31,12 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
 
   const order = data as Order & { order_items: OrderItem[]; order_status_history: OrderHistory[] };
 
+  let outletName: string | null = null;
+  if (order.outlet_id) {
+    const { data: o } = await supabase.from("outlets").select("name").eq("id", order.outlet_id).maybeSingle();
+    outletName = (o?.name as string | undefined) ?? null;
+  }
+
   let slipUrl: string | null = null;
   if (order.slip_path) {
     const { data: signed } = await supabase.storage.from(SLIP_BUCKET).createSignedUrl(order.slip_path, 600);
@@ -46,7 +52,9 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Order {order.order_number}</h1>
-          <p className="text-sm text-zinc-500">Placed {formatDate(order.created_at, true)}</p>
+          <p className="text-sm text-zinc-500">
+            {outletName ?? "No outlet (older order)"} · Placed {formatDate(order.created_at, true)}
+          </p>
         </div>
         <div className="text-right">
           <StatusBadge status={order.status} handover={order.handover_method} className="text-sm" />

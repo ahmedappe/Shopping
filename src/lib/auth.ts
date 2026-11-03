@@ -29,8 +29,23 @@ export const getSessionUser = cache(async () => {
 
   const role: Role = ROLES.includes(profile?.role as Role) ? (profile!.role as Role) : "customer";
 
+  // Outlets this person may work in. Admin: every outlet. Others: assigned ones.
+  let outletIds: string[] = [];
+  const isStaffish = role !== "customer";
+  if (isStaffish) {
+    if (role === "admin") {
+      const { data } = await supabase.from("outlets").select("id");
+      outletIds = (data ?? []).map((o) => o.id as string);
+    } else {
+      const { data } = await supabase.from("outlet_users").select("outlet_id").eq("user_id", user.id);
+      outletIds = (data ?? []).map((o) => o.outlet_id as string);
+    }
+  }
+
   return {
     id: user.id,
+    /** Outlet ids this user can work in (all of them for admin). */
+    outletIds,
     email: user.email ?? null,
     fullName: (profile?.full_name as string | null) ?? null,
     phone: (profile?.phone as string | null) ?? null,

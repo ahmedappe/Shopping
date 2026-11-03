@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireManager } from "@/lib/auth";
+import { getAdminOutlets, pickOutlet } from "@/lib/admin-outlets";
+import { OutletFilter } from "@/components/admin/outlet-filter";
 import { createClient } from "@/lib/supabase/server";
 import { ORDER_STATUS_META } from "@/config/store";
 import { StatusBadge } from "@/components/status-badge";
@@ -16,21 +18,26 @@ const STATUSES = Object.keys(ORDER_STATUS_META) as OrderStatus[];
 export default async function AdminOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string; page?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; page?: string; outlet?: string }>;
 }) {
-  await requireManager();
+  const user = await requireManager();
   const params = await searchParams;
   const status = STATUSES.includes(params.status as OrderStatus) ? (params.status as OrderStatus) : undefined;
   const q = sanitizeSearch(params.q ?? "");
   const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
 
+  const outlets = await getAdminOutlets(user);
+  const { selected } = pickOutlet(outlets, params.outlet);
+  const outletName = new Map(outlets.map((o) => [o.id, o.name]));
+
   const supabase = await createClient();
   let query = supabase
     .from("orders")
-    .select("id, order_number, customer_name, phone, city, status, total, created_at, slip_path, slip_verdict, handover_method", { count: "exact" })
+    .select("id, order_number, outlet_id, customer_name, phone, city, status, total, created_at, slip_path, slip_verdict, handover_method", { count: "exact" })
     .order("created_at", { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
   if (status) query = query.eq("status", status);
+  if (selected) query = query.eq("outlet_id", selected.id);
   if (q) {
     const p = `*${q.replace(/ /g, "*")}*`;
     query = query.or(`order_number.ilike.${p},customer_name.ilike.${p},phone.ilike.${p}`);
@@ -38,13 +45,14 @@ export default async function AdminOrdersPage({
   const { data, count } = await query;
   const orders = (data ?? []) as Pick<
     Order,
-    "id" | "order_number" | "customer_name" | "phone" | "city" | "status" | "total" | "created_at" | "slip_path" | "slip_verdict" | "handover_method"
+    "id" | "order_number" | "outlet_id" | "customer_name" | "phone" | "city" | "status" | "total" | "created_at" | "slip_path" | "slip_verdict" | "handover_method"
   >[];
 
   const tabHref = (s?: string) => {
     const sp = new URLSearchParams();
     if (s) sp.set("status", s);
     if (q) sp.set("q", q);
+    if (selected) sp.set("outlet", selected.slug);
     return `/admin/orders${sp.size ? `?${sp}` : ""}`;
   };
 
@@ -52,7 +60,11 @@ export default async function AdminOrdersPage({
     <div>
       <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
 
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+      <div className="mt-4">
+        <OutletFilter outlets={outlets} selectedSlug={selected?.slug} basePath="/admin/orders" params={{ status, q: q || undefined }} />
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-1 overflow-x-auto">
           <Tab href={tabHref()} active={!status}>
             All
@@ -65,15 +77,17 @@ export default async function AdminOrdersPage({
         </div>
         <form className="w-full sm:w-72">
           {status && <input type="hidden" name="status" value={status} />}
+          {selected && <input type="hidden" name="outlet" value={selected.slug} />}
           <input name="q" type="search" defaultValue={q} placeholder="Order no., name or phone" className="input" />
         </form>
       </div>
 
       <div className="card mt-4 overflow-x-auto">
-        <table className="w-full min-w-[640px] text-sm">
+        <table className="w-full min-w-[720px] text-sm">
           <thead className="border-b border-zinc-200 bg-zinc-50 text-left text-xs font-medium text-zinc-500 uppercase">
             <tr>
               <th className="px-4 py-3">Order</th>
+              <th className="px-4 py-3">Outlet</th>
               <th className="px-4 py-3">Customer</th>
               <th className="px-4 py-3">Date</th>
               <th className="px-4 py-3">Status</th>
@@ -88,6 +102,7 @@ export default async function AdminOrdersPage({
                     {o.order_number}
                   </Link>
                 </td>
+                <td className="px-4 py-3 text-zinc-600">{o.outlet_id ? (outletName.get(o.outlet_id) ?? "—") : "No outlet"}</td>
                 <td className="px-4 py-3">
                   <p>{o.customer_name}</p>
                   <p className="text-xs text-zinc-500">
@@ -106,7 +121,7 @@ export default async function AdminOrdersPage({
             ))}
             {orders.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-zinc-500">
+                <td colSpan={6} className="px-4 py-10 text-center text-zinc-500">
                   No orders found
                 </td>
               </tr>
@@ -119,7 +134,7 @@ export default async function AdminOrdersPage({
         page={page}
         pageCount={Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE))}
         basePath="/admin/orders"
-        params={{ status, q: q || undefined }}
+        params={{ status, q: q || undefined, outlet: selected?.slug }}
       />
     </div>
   );

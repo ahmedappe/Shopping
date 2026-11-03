@@ -9,6 +9,9 @@ import { formatDate } from "@/lib/utils";
 import { isDisabled, listUsers } from "../data";
 import { RoleBadge } from "../role-badge";
 import { UserManager } from "./user-manager";
+import { OutletAccess } from "./outlet-access";
+import { getAdminOutlets } from "@/lib/admin-outlets";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Manage user" };
 
@@ -20,6 +23,11 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
   const user = (await listUsers()).find((u) => u.id === id);
   if (!user) notFound();
   const isMe = user.id === me.id;
+
+  const outlets = await getAdminOutlets(me);
+  const supabase = await createClient();
+  const { data: assignedRows } = await supabase.from("outlet_users").select("outlet_id").eq("user_id", id);
+  const assigned = (assignedRows ?? []).map((r) => r.outlet_id as string);
 
   return (
     <div className="max-w-3xl">
@@ -47,6 +55,10 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
         isMe={isMe}
         hasKey={hasAdminKey()}
       />
+
+      {(user.role === "staff" || user.role === "manager") && (
+        <OutletAccess userId={user.id} outlets={outlets} assigned={assigned} />
+      )}
     </div>
   );
 }

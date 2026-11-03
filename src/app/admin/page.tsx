@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { AlertTriangle, Banknote, Clock, Package, ShoppingCart, Users } from "lucide-react";
 import { requireManager } from "@/lib/auth";
+import { getAdminOutlets, pickOutlet } from "@/lib/admin-outlets";
+import { OutletFilter } from "@/components/admin/outlet-filter";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, formatPrice, variantLabel } from "@/lib/utils";
 import { ORDER_STATUS_META, STORE } from "@/config/store";
@@ -21,20 +23,27 @@ type Stats = {
   top_products: { name: string; quantity: number; revenue: number }[];
 };
 
-export default async function AdminDashboard() {
-  await requireManager();
+export default async function AdminDashboard({ searchParams }: { searchParams: Promise<{ outlet?: string }> }) {
+  const user = await requireManager();
+  const params = await searchParams;
+  const outlets = await getAdminOutlets(user);
+  const { selected, ids } = pickOutlet(outlets, params.outlet);
   const supabase = await createClient();
 
   const [{ data: statsData, error }, { data: recent }, { data: lowStock }] = await Promise.all([
-    supabase.rpc("admin_dashboard_stats"),
+    supabase.rpc("admin_dashboard_stats", { p_outlet: selected?.id ?? null }),
+    (() => {
+      const q = supabase
+        .from("orders")
+        .select("id, order_number, customer_name, status, total, created_at, handover_method")
+        .order("created_at", { ascending: false })
+        .limit(8);
+      return selected ? q.eq("outlet_id", selected.id) : q;
+    })(),
     supabase
-      .from("orders")
-      .select("id, order_number, customer_name, status, total, created_at, handover_method")
-      .order("created_at", { ascending: false })
-      .limit(8),
-    supabase
-      .from("product_variants")
-      .select("id, option1, option2, stock, product:products(id, name)")
+      .from("outlet_variants")
+      .select("variant_id, outlet_id, stock, variant:product_variants!inner(id, option1, option2, product:products(id, name))")
+      .in("outlet_id", ids.length ? ids : ["00000000-0000-0000-0000-000000000000"])
       .eq("is_active", true)
       .lte("stock", STORE.lowStockThreshold)
       .order("stock")
@@ -52,7 +61,7 @@ export default async function AdminDashboard() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-sm text-zinc-500">Overview of your store</p>
+          <p className="text-sm text-zinc-500">{selected ? selected.name : "All outlets"}</p>
         </div>
         {s.awaiting_review > 0 && (
           <Link href="/admin/orders?status=slip_uploaded" className="btn-brand">
@@ -60,6 +69,8 @@ export default async function AdminDashboard() {
           </Link>
         )}
       </div>
+
+      <OutletFilter outlets={outlets} selectedSlug={selected?.slug} basePath="/admin" />
 
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <StatCard icon={Banknote} label="Revenue (30 days)" value={formatPrice(s.revenue_30d)} hint={`${formatPrice(s.revenue_total)} all time`} />
@@ -155,11 +166,19 @@ export default async function AdminDashboard() {
               <AlertTriangle className="size-4 text-amber-500" /> Low stock ({s.low_stock})
             </h2>
             <ul className="mt-3 space-y-2 text-sm">
-              {((lowStock ?? []) as unknown as { id: string; option1: string | null; option2: string | null; stock: number; product: { id: string; name: string } | null }[]).map((v) => (
-                <li key={v.id} className="flex justify-between gap-3">
-                  <Link href={`/admin/products/${v.product?.id}`} className="truncate hover:underline">
-                    {v.product?.name}
-                    {variantLabel(v) && <span className="text-zinc-500"> · {variantLabel(v)}</span>}
+              {((lowStock ?? []) as unknown as {
+                variant_id: string;
+                outlet_id: string;
+                stock: number;
+                variant: { id: string; option1: string | null; option2: string | null; product: { id: string; name: string } | null } | null;
+              }[]).map((v) => (
+                <li key={`${v.outlet_id}-${v.variant_id}`} className="flex justify-between gap-3">
+                  <Link href={`/admin/products/${v.variant?.product?.id}`} className="truncate hover:underline">
+                    {v.variant?.product?.name}
+                    {v.variant && variantLabel(v.variant) && <span className="text-zinc-500"> · {variantLabel(v.variant)}</span>}
+                    {!selected && outlets.length > 1 && (
+                      <span className="text-zinc-400"> · {outlets.find((o) => o.id === v.outlet_id)?.name}</span>
+                    )}
                   </Link>
                   <span className={v.stock === 0 ? "font-semibold text-red-600" : "text-amber-600"}>{v.stock}</span>
                 </li>

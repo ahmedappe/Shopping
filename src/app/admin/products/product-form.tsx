@@ -224,9 +224,9 @@ export function ProductForm({
       </section>
 
       <section className="card p-5">
-        <h2 className="font-semibold">Variants, price & stock</h2>
+        <h2 className="font-semibold">Variants, default price & starting stock</h2>
         <p className="mt-1 text-xs text-zinc-500">
-          Leave option names empty for a simple product with one price. Add e.g. “Size” and “Color” for variants.
+          Leave option names empty for a simple product with one price. Add e.g. “Size” and “Color” for variants. The price and stock here are the starting values for your outlets when a variant is first added; after saving, set each outlet's own price and stock in “Prices & stock by outlet”.
         </p>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -289,8 +289,8 @@ export function ProductForm({
               <tr>
                 {hasOptions && <th className="pb-2 pr-2 font-medium">{option1Name}</th>}
                 {hasOptions && option2Name && <th className="pb-2 pr-2 font-medium">{option2Name}</th>}
-                <th className="pb-2 pr-2 font-medium">Price</th>
-                <th className="pb-2 pr-2 font-medium">Stock</th>
+                <th className="pb-2 pr-2 font-medium">Default price</th>
+                <th className="pb-2 pr-2 font-medium">Starting stock</th>
                 <th className="pb-2 pr-2 font-medium">SKU</th>
                 <th className="pb-2 pr-2 font-medium">Active</th>
                 <th />

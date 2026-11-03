@@ -118,3 +118,18 @@ export async function setUserDisabled(userId: string, disabled: boolean): Promis
   refresh(userId);
   return { ok: true, message: disabled ? "Account disabled. They can no longer sign in." : "Account enabled." };
 }
+
+export async function setUserOutlets(userId: string, outletIds: string[]): Promise<ActionResult> {
+  if (!(await getAdminOrNull())) return { ok: false, error: "Only admins can assign outlets." };
+  const parsed = z.object({ userId: z.string().uuid(), ids: z.array(z.string().uuid()).max(50) }).safeParse({ userId, ids: outletIds });
+  if (!parsed.success) return { ok: false, error: "Invalid request." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_set_user_outlets", {
+    p_user_id: parsed.data.userId,
+    p_outlet_ids: parsed.data.ids,
+  });
+  if (error) return { ok: false, error: friendlyDbError(error.message) };
+  refresh(parsed.data.userId);
+  return { ok: true, message: "Outlet access saved." };
+}
