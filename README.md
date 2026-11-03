@@ -1,6 +1,6 @@
-# Shopping Site
+# Kandhufathi
 
-An online store built with **Next.js 15 (App Router)**, **Supabase** (Postgres, Auth, Storage) and **Tailwind CSS v4**, ready to deploy on **Vercel**.
+Kandhufathi — an online store built with **Next.js 15 (App Router)**, **Supabase** (Postgres, Auth, Storage) and **Tailwind CSS v4**, ready to deploy on **Vercel**.
 
 ## Features
 
