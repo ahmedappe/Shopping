@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { safeRedirectPath } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/server";
+import type { Company } from "@/lib/types";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: "Sign in" };
@@ -10,6 +12,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const { next, error } = await searchParams;
   const nextPath = safeRedirectPath(next, "/");
   if (await getSessionUser()) redirect(nextPath);
+  const supabase = await createClient();
+  const { data } = await supabase.from("companies").select("id, name, slug").order("sort_order");
+  const companies = (data ?? []) as Company[];
 
   return (
     <div className="container-page flex justify-center py-16">
@@ -21,7 +26,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             That link is invalid or has expired. Please try again.
           </p>
         )}
-        <LoginForm next={nextPath} />
+        <LoginForm next={nextPath} companies={companies} />
       </div>
     </div>
   );

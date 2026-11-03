@@ -15,6 +15,7 @@ const money = z.preprocess(
 
 const outletSchema = z.object({
   name: z.string().trim().min(2, "Enter the outlet name.").max(80),
+  companyId: z.string().uuid("Choose the company."),
   slug: z
     .string()
     .trim()
@@ -48,6 +49,7 @@ export async function saveOutlet(_prev: ActionResult | null, formData: FormData)
   const name = String(formData.get("name") ?? "");
   const parsed = outletSchema.safeParse({
     name,
+    companyId: String(formData.get("companyId") ?? ""),
     slug: String(formData.get("slug") ?? "") || slugify(name),
     hostnames: parseHostnames(String(formData.get("hostnames") ?? "")),
     bankName: String(formData.get("bankName") ?? ""),
@@ -77,6 +79,7 @@ export async function saveOutlet(_prev: ActionResult | null, formData: FormData)
 
   const row = {
     name: d.name,
+    company_id: d.companyId,
     slug: d.slug,
     hostnames: d.hostnames,
     bank_name: d.bankName || null,

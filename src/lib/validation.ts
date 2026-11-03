@@ -24,6 +24,18 @@ export const signInSchema = z.object({
   password: z.string().min(1, "Enter your password").max(72),
 });
 
+export const usernameSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z0-9._-]{3,30}$/, "Username: 3–30 letters, numbers, dot, dash or underscore");
+
+export const staffSignInSchema = z.object({
+  companySlug: z.string().trim().toLowerCase().min(1, "Choose your company"),
+  username: usernameSchema,
+  password: z.string().min(1, "Enter your password").max(72),
+});
+
 export const checkoutSchema = z.object({
   customerName: trimmed(2, 120, "Name"),
   phone: z.string().trim().regex(/^\+?[0-9 ]{7,15}$/, "Enter a valid phone number"),
@@ -124,7 +136,10 @@ const passwordSchema = z
 
 export const createUserSchema = z.object({
   fullName: trimmed(2, 120, "Name"),
-  email: z.string().trim().toLowerCase().email("Enter a valid email"),
+  // Staff with a company + username get a generated sign-in address, so email is optional then.
+  email: z.union([z.literal(""), z.string().trim().toLowerCase().email("Enter a valid email")]),
+  companyId: z.union([z.literal(""), z.string().uuid()]).optional(),
+  username: z.union([z.literal(""), usernameSchema]).optional(),
   phone: z.union([z.literal(""), z.string().trim().regex(/^\+?[0-9 ]{7,15}$/, "Enter a valid phone number")]),
   password: passwordSchema,
   role: z.enum(ROLE_VALUES),

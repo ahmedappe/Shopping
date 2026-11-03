@@ -24,8 +24,15 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
   if (!user) notFound();
   const isMe = user.id === me.id;
 
-  const outlets = await getAdminOutlets(me);
   const supabase = await createClient();
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select("username, company:companies(id, name)")
+    .eq("id", id)
+    .maybeSingle();
+  const company = (prof?.company ?? null) as unknown as { id: string; name: string } | null;
+  // Staff only get outlets of their own company.
+  const outlets = (await getAdminOutlets(me)).filter((o) => !company || o.company_id === company.id);
   const { data: assignedRows } = await supabase.from("outlet_users").select("outlet_id").eq("user_id", id);
   const assigned = (assignedRows ?? []).map((r) => r.outlet_id as string);
 
@@ -43,6 +50,12 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
         {user.email} · Joined {formatDate(user.created_at)} · Last sign-in{" "}
         {user.last_sign_in_at ? formatDate(user.last_sign_in_at, true) : "never"}
       </p>
+
+      {prof?.username && company && (
+        <p className="mt-1 text-sm text-zinc-500">
+          Signs in with company <strong>{company.name}</strong> and username <strong>{prof.username as string}</strong>
+        </p>
+      )}
 
       <UserManager
         user={{

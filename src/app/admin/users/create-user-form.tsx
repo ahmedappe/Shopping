@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Check, Copy, KeyRound, Loader2, UserPlus } from "lucide-react";
 import { createUser } from "./actions";
 import { ROLE_HELP } from "./role-badge";
+import type { Company } from "@/lib/types";
 
 type Role = keyof typeof ROLE_HELP;
 
@@ -18,14 +19,16 @@ export function generatePassword() {
   return p;
 }
 
-export function CreateUserForm() {
+export function CreateUserForm({ companies }: { companies: Company[] }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [created, setCreated] = useState<{ id: string; email: string; password: string } | null>(null);
+  const [created, setCreated] = useState<{ id: string; login: string; password: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [role, setRole] = useState<Role>("staff");
   const [password, setPassword] = useState("");
+  // Staff and managers sign in with company + username; admins use an email.
+  const byUsername = (role === "staff" || role === "manager") && companies.length > 0;
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -34,7 +37,9 @@ export function CreateUserForm() {
     const fd = new FormData(form);
     const input = {
       fullName: String(fd.get("fullName") ?? ""),
-      email: String(fd.get("email") ?? ""),
+      email: byUsername ? "" : String(fd.get("email") ?? ""),
+      companyId: byUsername ? String(fd.get("companyId") ?? "") : "",
+      username: byUsername ? String(fd.get("username") ?? "") : "",
       phone: String(fd.get("phone") ?? ""),
       password,
       role,
@@ -42,7 +47,12 @@ export function CreateUserForm() {
     startTransition(async () => {
       const res = await createUser(input);
       if (!res.ok) return setError(res.error);
-      setCreated({ id: res.userId, email: input.email, password });
+      const companyName = companies.find((c) => c.id === input.companyId)?.name;
+      setCreated({
+        id: res.userId,
+        login: byUsername ? `Company: ${companyName}\nUsername: ${input.username}` : `Email: ${input.email}`,
+        password,
+      });
       form.reset();
       setPassword("");
       router.refresh();
@@ -54,14 +64,14 @@ export function CreateUserForm() {
       <div className="mt-4 rounded-xl bg-green-50 p-4 text-sm text-green-900 ring-1 ring-green-200">
         <p className="font-semibold">User created. They can sign in now with:</p>
         <p className="mt-2">
-          Email: <strong>{created.email}</strong>
+          <strong className="whitespace-pre-line">{created.login}</strong>
           <br />
           Password: <code className="rounded bg-white px-1.5 py-0.5 font-semibold">{created.password}</code>
           <button
             type="button"
             className="ml-2 inline-flex items-center gap-1 text-xs underline"
             onClick={async () => {
-              await navigator.clipboard.writeText(`${created.email}\n${created.password}`).catch(() => {});
+              await navigator.clipboard.writeText(`${created.login}\nPassword: ${created.password}`).catch(() => {});
               setCopied(true);
             }}
           >
@@ -89,12 +99,30 @@ export function CreateUserForm() {
         </label>
         <input id="u-name" name="fullName" required maxLength={120} className="input" autoComplete="off" />
       </div>
-      <div>
-        <label htmlFor="u-email" className="label">
-          Email (used to sign in)
-        </label>
-        <input id="u-email" name="email" type="email" required className="input" autoComplete="off" />
-      </div>
+      {byUsername ? (
+        <>
+          <div>
+            <label htmlFor="u-company" className="label">Company</label>
+            <select id="u-company" name="companyId" required className="input" defaultValue="">
+              <option value="" disabled>Choose company</option>
+              {companies.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="u-username" className="label">Username (used to sign in)</label>
+            <input id="u-username" name="username" required minLength={3} maxLength={30} pattern="[A-Za-z0-9._\-]+" className="input" autoComplete="off" />
+          </div>
+        </>
+      ) : (
+        <div>
+          <label htmlFor="u-email" className="label">
+            Email (used to sign in)
+          </label>
+          <input id="u-email" name="email" type="email" required className="input" autoComplete="off" />
+        </div>
+      )}
       <div>
         <label htmlFor="u-phone" className="label">
           Phone <span className="font-normal text-zinc-400">(optional)</span>

@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createUserSchema, firstError, resetPasswordSchema, updateUserSchema } from "@/lib/validation";
 import { friendlyDbError } from "@/lib/utils";
+import { staffEmail } from "@/lib/staff-login";
 import type { ActionResult } from "@/lib/types";
 
 const NO_KEY =
@@ -28,8 +29,18 @@ export async function createUser(input: unknown): Promise<CreateUserResult> {
   const admin = createAdminClient();
   if (!admin) return { ok: false, error: NO_KEY };
 
+  // Staff with a company + username sign in with those; others use their own email.
+  let email = d.email;
+  const staffLogin = Boolean(d.companyId && d.username);
+  if (staffLogin) {
+    const { data: company } = await (await createClient()).from("companies").select("slug").eq("id", d.companyId!).maybeSingle();
+    if (!company) return { ok: false, error: "Choose the company." };
+    email = staffEmail(d.username!, company.slug as string);
+  }
+  if (!email) return { ok: false, error: "Enter an email, or a company and username." };
+
   const { data, error } = await admin.auth.admin.createUser({
-    email: d.email,
+    email,
     password: d.password,
     email_confirm: true, // admin-created accounts can sign in straight away
     user_metadata: { full_name: d.fullName, phone: d.phone },
@@ -38,8 +49,25 @@ export async function createUser(input: unknown): Promise<CreateUserResult> {
     const msg = error?.message ?? "";
     return {
       ok: false,
-      error: /already|registered|exists/i.test(msg) ? "A user with this email already exists." : "Could not create the user.",
+      error: /already|registered|exists/i.test(msg)
+        ? staffLogin
+          ? "That username is already used in this company."
+          : "A user with this email already exists."
+        : "Could not create the user.",
     };
+  }
+
+  if (staffLogin) {
+    const supabase = await createClient();
+    const { error: loginError } = await supabase.rpc("admin_set_staff_login", {
+      p_user_id: data.user.id,
+      p_company_id: d.companyId,
+      p_username: d.username,
+    });
+    if (loginError) {
+      refresh();
+      return { ok: false, error: `User created, but the company/username couldn't be saved: ${friendlyDbError(loginError.message)}` };
+    }
   }
 
   if (d.role !== "customer") {

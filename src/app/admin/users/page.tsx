@@ -7,6 +7,8 @@ import { cn, formatDate } from "@/lib/utils";
 import { isDisabled, listUsers } from "./data";
 import { RoleBadge } from "./role-badge";
 import { CreateUserForm } from "./create-user-form";
+import { createClient } from "@/lib/supabase/server";
+import type { Company } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Users" };
 
@@ -28,6 +30,9 @@ export default async function AdminUsersPage({
   const role = TABS.find((t) => t.value === params.role)?.value;
   const q = (params.q ?? "").trim().slice(0, 80);
   const users = await listUsers(q, role);
+  const supabase = await createClient();
+  const { data: companyRows } = await supabase.from("companies").select("id, name, slug").order("sort_order");
+  const companies = (companyRows ?? []) as Company[];
 
   const href = (r?: string) => {
     const sp = new URLSearchParams();
@@ -53,7 +58,7 @@ export default async function AdminUsersPage({
 
       <section className="card mt-6 p-5">
         <h2 className="font-semibold">Add user</h2>
-        <CreateUserForm />
+        <CreateUserForm companies={companies} />
       </section>
 
       <div className="mt-8 flex flex-wrap items-center justify-between gap-3">

@@ -8,7 +8,7 @@ import type { Outlet } from "@/lib/types";
 export const OUTLET_COOKIE = "outlet";
 
 export const OUTLET_COLUMNS =
-  "id,name,slug,hostnames,bank_name,account_name,account_number,delivery_fee,free_delivery_threshold,is_active,sort_order";
+  "id,name,slug,hostnames,bank_name,account_name,account_number,delivery_fee,free_delivery_threshold,is_active,sort_order,company_id";
 
 export function normaliseHost(raw: string | null | undefined) {
   return (raw ?? "")
@@ -32,6 +32,7 @@ export function toOutlet(row: Record<string, unknown>): Outlet {
     free_delivery_threshold: row.free_delivery_threshold != null ? Number(row.free_delivery_threshold) : null,
     is_active: row.is_active as boolean,
     sort_order: (row.sort_order as number) ?? 0,
+    company_id: (row.company_id as string | null) ?? null,
   };
 }
 

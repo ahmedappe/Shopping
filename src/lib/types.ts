@@ -137,4 +137,7 @@ export type Outlet = {
   free_delivery_threshold: number | null;
   is_active: boolean;
   sort_order: number;
+  company_id: string | null;
 };
+
+export type Company = { id: string; name: string; slug: string };

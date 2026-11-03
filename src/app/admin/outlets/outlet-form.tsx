@@ -2,10 +2,10 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { SubmitButton } from "@/components/submit-button";
-import type { ActionResult, Outlet } from "@/lib/types";
+import type { ActionResult, Company, Outlet } from "@/lib/types";
 import { saveOutlet } from "./actions";
 
-export function OutletForm({ outlet }: { outlet?: Outlet }) {
+export function OutletForm({ outlet, companies }: { outlet?: Outlet; companies: Company[] }) {
   const [state, action] = useActionState<ActionResult | null, FormData>(saveOutlet, null);
   const formRef = useRef<HTMLFormElement>(null);
   const k = outlet?.id ?? "new";
@@ -20,6 +20,15 @@ export function OutletForm({ outlet }: { outlet?: Outlet }) {
       <div>
         <label className="label" htmlFor={`name-${k}`}>Outlet name</label>
         <input id={`name-${k}`} name="name" required maxLength={80} defaultValue={outlet?.name} className="input" />
+      </div>
+      <div>
+        <label className="label" htmlFor={`co-${k}`}>Company</label>
+        <select id={`co-${k}`} name="companyId" required className="input" defaultValue={outlet?.company_id ?? ""}>
+          <option value="" disabled>Choose company</option>
+          {companies.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
       </div>
       <div>
         <label className="label" htmlFor={`slug-${k}`}>Short name (slug)</label>

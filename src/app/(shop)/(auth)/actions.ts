@@ -4,8 +4,9 @@ import { getSiteOrigin } from "@/lib/outlet";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { signInSchema, signUpSchema, firstError } from "@/lib/validation";
+import { signInSchema, signUpSchema, staffSignInSchema, firstError } from "@/lib/validation";
 import { safeRedirectPath } from "@/lib/utils";
+import { staffEmail } from "@/lib/staff-login";
 
 export type AuthState = { error?: string; message?: string; values?: Record<string, string> } | null;
 
@@ -28,6 +29,23 @@ export async function signIn(_prev: AuthState, formData: FormData): Promise<Auth
 
   revalidatePath("/", "layout");
   redirect(safeRedirectPath(String(formData.get("next") ?? ""), "/"));
+}
+
+/** Staff sign-in: company + username + password. */
+export async function signInStaff(_prev: AuthState, formData: FormData): Promise<AuthState> {
+  const values = { companySlug: String(formData.get("companySlug") ?? ""), username: String(formData.get("username") ?? "") };
+  const parsed = staffSignInSchema.safeParse({ ...values, password: formData.get("password") });
+  if (!parsed.success) return { error: firstError(parsed.error), values };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword({
+    email: staffEmail(parsed.data.username, parsed.data.companySlug),
+    password: parsed.data.password,
+  });
+  if (error) return { error: "Incorrect company, username or password.", values };
+
+  revalidatePath("/", "layout");
+  redirect(safeRedirectPath(String(formData.get("next") ?? ""), "/admin"));
 }
 
 export async function signUp(_prev: AuthState, formData: FormData): Promise<AuthState> {
