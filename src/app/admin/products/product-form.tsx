@@ -226,7 +226,7 @@ export function ProductForm({
       <section className="card p-5">
         <h2 className="font-semibold">Variants, default price & starting stock</h2>
         <p className="mt-1 text-xs text-zinc-500">
-          Leave option names empty for a simple product with one price. Add e.g. “Size” and “Color” for variants. The price and stock here are the starting values for your outlets when a variant is first added; after saving, set each outlet's own price and stock in “Prices & stock by outlet”.
+          Leave option names empty for a simple product with one price. Add e.g. “Size” and “Color” for variants. The price and stock here are the starting values for your outlets when a variant is first added; after saving, set each outlet&apos;s own price and stock in “Prices & stock by outlet”.
         </p>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
