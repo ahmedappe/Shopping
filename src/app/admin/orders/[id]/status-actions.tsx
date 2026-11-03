@@ -28,14 +28,15 @@ const BUTTONS: Record<Target, { label: string; className: string; icon: typeof C
   pending: { label: "Ask for a new slip", className: "btn-outline", icon: RotateCcw },
 };
 
-export function StatusActions({ orderId, status }: { orderId: string; status: OrderStatus }) {
+export function StatusActions({ orderId, status, isAdmin }: { orderId: string; status: OrderStatus; isAdmin: boolean }) {
   const [note, setNote] = useState("");
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [pendingTarget, setPendingTarget] = useState<Target | "collected" | null>(null);
   const [place, setPlace] = useState<string>(COLLECTION_POINTS[0]);
   const [otherPlace, setOtherPlace] = useState("");
   const [isPending, startTransition] = useTransition();
-  const targets = TRANSITIONS[status];
+  // Reopening an approved order (back to pending) is admin-only.
+  const targets = TRANSITIONS[status].filter((t) => !(status === "approved" && t === "pending" && !isAdmin));
   // After approval, "pending" means a payment problem was found: the customer must pay/upload again.
   const labelFor = (t: Target) =>
     t === "pending" && status === "approved" ? "Payment problem: ask for a new slip" : BUTTONS[t].label;

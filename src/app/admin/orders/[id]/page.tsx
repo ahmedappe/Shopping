@@ -16,7 +16,7 @@ import type { Order, OrderHistory, OrderItem } from "@/lib/types";
 export const metadata: Metadata = { title: "Order" };
 
 export default async function AdminOrderPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireManager();
+  const user = await requireManager();
   const { id } = await params;
   if (!z.string().uuid().safeParse(id).success) notFound();
 
@@ -92,7 +92,7 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
         </div>
 
         <aside className="space-y-6">
-          <StatusActions orderId={order.id} status={order.status} />
+          <StatusActions orderId={order.id} status={order.status} isAdmin={user.isAdmin} />
 
           <section className="card p-5 text-sm">
             <h2 className="font-semibold">Customer</h2>

@@ -1,6 +1,6 @@
 -- 0005: let an approved order go back to "pending" so the customer can be asked
 -- to upload a new payment slip (e.g. payment was sent to the wrong account).
--- Stock stays reserved for the order. Run in the Supabase SQL editor.
+-- Admin only. Stock stays reserved for the order. Run in the Supabase SQL editor.
 
 create or replace function public.admin_set_order_status(
   p_order_id uuid,
@@ -38,9 +38,14 @@ begin
     raise exception 'INVALID_LOCATION';
   end if;
 
-  -- Moving an approved order back to pending needs a message for the customer.
-  if v_old = 'approved' and p_status = 'pending' and v_note is null then
-    raise exception 'INVALID_TRANSITION';
+  -- Reopening an approved order is admin-only and needs a message for the customer.
+  if v_old = 'approved' and p_status = 'pending' then
+    if not public.is_admin() then
+      raise exception 'FORBIDDEN';
+    end if;
+    if v_note is null then
+      raise exception 'INVALID_TRANSITION';
+    end if;
   end if;
 
   if p_status = 'rejected' then
