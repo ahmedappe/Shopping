@@ -7,6 +7,8 @@ import { createClient } from "@/lib/supabase/server";
 import { signInSchema, signUpSchema, staffSignInSchema, firstError } from "@/lib/validation";
 import { safeRedirectPath } from "@/lib/utils";
 import { staffEmail } from "@/lib/staff-login";
+import { accountEmail } from "@/lib/customer-account";
+import { getCurrentOutlet } from "@/lib/outlet";
 
 export type AuthState = { error?: string; message?: string; values?: Record<string, string> } | null;
 
@@ -16,7 +18,16 @@ export async function signIn(_prev: AuthState, formData: FormData): Promise<Auth
   if (!parsed.success) return { error: firstError(parsed.error), values };
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  // Customers have a separate account per outlet; try this outlet's account first,
+  // then the plain email (admins and accounts made before outlets existed).
+  const { outlet } = await getCurrentOutlet();
+  let { error } = await supabase.auth.signInWithPassword({
+    email: accountEmail(parsed.data.email, outlet?.slug),
+    password: parsed.data.password,
+  });
+  if (error && outlet) {
+    ({ error } = await supabase.auth.signInWithPassword(parsed.data));
+  }
   if (error) {
     // Generic message — don't reveal whether the email exists
     return {
@@ -63,11 +74,17 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
   const next = safeRedirectPath(String(formData.get("next") ?? ""), "/");
 
   const supabase = await createClient();
+  const { outlet } = await getCurrentOutlet();
   const { data, error } = await supabase.auth.signUp({
-    email: parsed.data.email,
+    email: accountEmail(parsed.data.email, outlet?.slug),
     password: parsed.data.password,
     options: {
-      data: { full_name: parsed.data.fullName, phone: parsed.data.phone },
+      data: {
+        full_name: parsed.data.fullName,
+        phone: parsed.data.phone,
+        contact_email: parsed.data.email,
+        outlet_id: outlet?.id ?? null,
+      },
       emailRedirectTo: `${origin}/auth/confirm?next=${encodeURIComponent(next)}`,
     },
   });

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ChevronRight, LogOut } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentOutlet } from "@/lib/outlet";
 import { StatusBadge } from "@/components/status-badge";
 import { formatDate, formatPrice } from "@/lib/utils";
 import type { Order } from "@/lib/types";
@@ -12,10 +13,14 @@ export const metadata: Metadata = { title: "My orders" };
 export default async function OrdersPage() {
   const user = await requireUser("/orders");
   const supabase = await createClient();
-  const { data } = await supabase
+  const { outlet } = await getCurrentOutlet();
+  // Each outlet only shows its own orders.
+  let query = supabase
     .from("orders")
     .select("id, order_number, status, total, created_at, handover_method")
-    .eq("user_id", user.id)
+    .eq("user_id", user.id);
+  if (outlet) query = query.eq("outlet_id", outlet.id);
+  const { data } = await query
     .order("created_at", { ascending: false })
     .limit(100);
   const orders = (data ?? []) as Pick<Order, "id" | "order_number" | "status" | "total" | "created_at" | "handover_method">[];

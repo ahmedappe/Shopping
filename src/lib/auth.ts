@@ -46,7 +46,8 @@ export const getSessionUser = cache(async () => {
     id: user.id,
     /** Outlet ids this user can work in (all of them for admin). */
     outletIds,
-    email: user.email ?? null,
+    // The email the person typed (the sign-in address may carry an outlet tag after a "+").
+    email: (user.user_metadata?.contact_email as string | undefined) ?? user.email ?? null,
     fullName: (profile?.full_name as string | null) ?? null,
     phone: (profile?.phone as string | null) ?? null,
     role,
