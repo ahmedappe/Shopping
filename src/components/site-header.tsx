@@ -52,7 +52,7 @@ export async function SiteHeader() {
         </form>
 
         <div className="ml-auto flex items-center gap-1 md:ml-2">
-          {!byDomain && outlet && outlets.length > 1 && (
+          {!byDomain && user?.canEditCatalog && outlet && outlets.length > 1 && (
             <OutletSwitcher outlets={outlets.map((o) => ({ slug: o.slug, name: o.name }))} currentSlug={outlet.slug} />
           )}
           <Link href="/products" className="btn-ghost px-2.5 md:hidden" aria-label="Search">
