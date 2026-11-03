@@ -15,6 +15,9 @@ export async function SiteHeader() {
     getCurrentOutlet(),
   ]);
 
+  // Staff only see their own company's outlets they were given; admins see every outlet.
+  const staffOutlets = user?.isAdmin ? outlets : outlets.filter((o) => user?.outletIds.includes(o.id));
+
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/90 backdrop-blur">
       <div className="container-page flex h-16 items-center gap-4">
@@ -52,8 +55,8 @@ export async function SiteHeader() {
         </form>
 
         <div className="ml-auto flex items-center gap-1 md:ml-2">
-          {!byDomain && user?.canEditCatalog && outlet && outlets.length > 1 && (
-            <OutletSwitcher outlets={outlets.map((o) => ({ slug: o.slug, name: o.name }))} currentSlug={outlet.slug} />
+          {!byDomain && user?.canEditCatalog && outlet && staffOutlets.length > 1 && (
+            <OutletSwitcher outlets={staffOutlets.map((o) => ({ slug: o.slug, name: o.name }))} currentSlug={outlet.slug} />
           )}
           <Link href="/products" className="btn-ghost px-2.5 md:hidden" aria-label="Search">
             <Search className="size-5" />
