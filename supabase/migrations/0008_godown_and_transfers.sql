@@ -1,4 +1,4 @@
--- Godown stock for every outlet, and stock transfers between outlets of the same company.
+-- Godown stock for every outlet, and stock transfers between outlets (same company: manager/admin approves; between companies: admin only).
 --   * outlet_variants.stock          = shop stock (what customers can buy)
 --   * outlet_variants.godown_stock   = that outlet's godown (not sold to customers)
 --   * stock_transfers                = a request to move stock; moves only after a manager/admin approves
@@ -46,7 +46,8 @@ create policy "stock_transfers: read own outlets" on public.stock_transfers for 
 revoke insert, update, delete on public.stock_transfers from anon, authenticated;
 
 -- ---------------------------------------------------------------------
--- Request a transfer (staff, manager or admin who works in either outlet)
+-- Request a transfer (staff, manager or admin who works in either outlet;
+-- between the two companies: admin only)
 -- ---------------------------------------------------------------------
 create or replace function public.request_stock_transfer(
   p_variant_id    uuid,
@@ -81,7 +82,8 @@ begin
 
   select company_id into v_from_company from public.outlets where id = p_from_outlet;
   select company_id into v_to_company   from public.outlets where id = p_to_outlet;
-  if v_from_company is null or v_from_company is distinct from v_to_company then
+  -- Between companies: admin only.
+  if v_from_company is distinct from v_to_company and not public.is_admin() then
     raise exception 'DIFFERENT_COMPANY';
   end if;
 
@@ -102,7 +104,8 @@ revoke all on function public.request_stock_transfer(uuid, uuid, text, uuid, tex
 grant execute on function public.request_stock_transfer(uuid, uuid, text, uuid, text, int, text) to authenticated;
 
 -- ---------------------------------------------------------------------
--- Approve or reject (manager or admin; must work in one of the two outlets)
+-- Approve or reject (manager or admin; must work in one of the two outlets;
+-- between the two companies: admin only)
 -- ---------------------------------------------------------------------
 create or replace function public.decide_stock_transfer(p_id uuid, p_approve boolean, p_note text default null)
 returns void
@@ -119,6 +122,12 @@ begin
   select * into t from public.stock_transfers where id = p_id for update;
   if not found then
     raise exception 'TRANSFER_NOT_FOUND';
+  end if;
+  -- Between companies: admin only.
+  if (select company_id from public.outlets where id = t.from_outlet)
+       is distinct from (select company_id from public.outlets where id = t.to_outlet)
+     and not public.is_admin() then
+    raise exception 'DIFFERENT_COMPANY';
   end if;
   if not (public.can_access_outlet(t.from_outlet) or public.can_access_outlet(t.to_outlet)) then
     raise exception 'FORBIDDEN';

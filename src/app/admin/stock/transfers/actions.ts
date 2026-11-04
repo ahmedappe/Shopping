@@ -19,7 +19,7 @@ const requestSchema = z.object({
 const MESSAGES: Record<string, string> = {
   FORBIDDEN: "You don't have access to these outlets.",
   SAME_LOCATION: "Choose two different places.",
-  DIFFERENT_COMPANY: "Transfers are only allowed between outlets of the same company.",
+  DIFFERENT_COMPANY: "Only an admin can move stock between the two companies.",
   NO_STOCK_RECORD: "The source outlet has no stock record for this item.",
   NOT_ENOUGH_STOCK: "Not enough stock at the source to move that many.",
   ALREADY_DECIDED: "This transfer was already decided.",

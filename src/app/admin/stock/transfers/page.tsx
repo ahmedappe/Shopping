@@ -35,13 +35,14 @@ export default async function StockTransfersPage() {
   const outlets = await getAdminOutlets(user);
   const supabase = await createClient();
 
-  // Staff may move stock to or from an outlet of their own company they don't work in: list the company's outlets.
+  // Staff may move stock to or from any outlet of their own company; admins see every outlet.
   const companyIds = [...new Set(outlets.map((o) => o.company_id).filter(Boolean))] as string[];
   const { data: companyOutlets } = companyIds.length
     ? await supabase.from("outlets").select("id, name, slug, hostnames, bank_name, account_name, account_number, delivery_fee, free_delivery_threshold, is_active, sort_order, company_id").in("company_id", companyIds).order("sort_order")
     : { data: [] };
   const allOutlets = (companyOutlets ?? []) as unknown as typeof outlets;
   const outletName = new Map(allOutlets.map((o) => [o.id, o.name]));
+  const outletCompany = new Map(allOutlets.map((o) => [o.id, o.company_id]));
 
   const [{ data: transfers }, { data: variantRows }] = await Promise.all([
     supabase
@@ -70,7 +71,7 @@ export default async function StockTransfersPage() {
       </Link>
       <h1 className="mt-4 text-2xl font-bold tracking-tight">Stock transfers</h1>
       <p className="mt-1 text-sm text-zinc-500">
-        Move stock between outlets of the same company, or between an outlet&apos;s godown and shop. Stock only moves after a manager or admin approves.
+        Move stock between outlets, or between an outlet&apos;s godown and shop. Stock only moves after a manager or admin approves. Moves between the two companies can only be requested and approved by an admin.
       </p>
 
       <section className="card mt-6 p-5">
@@ -106,7 +107,13 @@ export default async function StockTransfersPage() {
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${STATUS_STYLE[t.status]}`}>{t.status}</span>
                 </td>
-                <td className="px-4 py-3 text-right">{t.status === "pending" && user.canManageStore && <DecideButtons id={t.id} />}</td>
+                <td className="px-4 py-3 text-right">{t.status === "pending" &&
+                    user.canManageStore &&
+                    (user.isAdmin || outletCompany.get(t.from_outlet) === outletCompany.get(t.to_outlet) ? (
+                      <DecideButtons id={t.id} />
+                    ) : (
+                      <span className="text-xs text-zinc-500">Admin approves</span>
+                    ))}</td>
               </tr>
             ))}
             {rows.length === 0 && (
