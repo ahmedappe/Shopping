@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Boxes, Building2, LayoutDashboard, Package, ShoppingCart, Store, Tags, Users } from "lucide-react";
+import { Boxes, Building2, LayoutGrid, LayoutDashboard, Package, ShoppingCart, Store, Tags, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Role = "customer" | "staff" | "manager" | "admin";
@@ -11,6 +11,7 @@ const LINKS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true, roles: ["manager", "admin"] },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart, roles: ["manager", "admin"] },
   { href: "/admin/products", label: "Products", icon: Package, roles: ["staff", "manager", "admin"] },
+  { href: "/admin/overview", label: "Outlets overview", icon: LayoutGrid, roles: ["manager", "admin"] },
   { href: "/admin/stock", label: "Stock", icon: Boxes, roles: ["staff", "manager", "admin"] },
   { href: "/admin/categories", label: "Categories", icon: Tags, roles: ["staff", "manager", "admin"] },
   { href: "/admin/outlets", label: "Outlets", icon: Building2, roles: ["admin"] },
