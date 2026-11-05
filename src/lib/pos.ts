@@ -24,6 +24,8 @@ export const POS_ERRORS: Record<string, string> = {
   BAD_METHOD: "Choose cash, card or transfer.",
   REFERENCE_REQUIRED: "Enter the card or transfer reference number.",
   UNDERPAID: "The payments are less than the total.",
+  NOT_ADVANCE_ITEM: "This item is not set as made in advance. Turn it on in POS setup.",
+  BAD_KIND: "Invalid entry.",
   OVERPAID_NON_CASH: "Card and transfer cannot be more than the total. Only cash gives change.",
 };
 

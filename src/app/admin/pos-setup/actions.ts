@@ -62,3 +62,20 @@ export async function setStation(outletId: string, variantId: string, station: "
   if (error) return { ok: false, error: "Could not save." };
   return { ok: true };
 }
+
+export async function setAdvance(outletId: string, variantId: string, madeInAdvance: boolean, reorder: number | null): Promise<ActionResult> {
+  if (!(await getCatalogEditorOrNull())) return { ok: false, error: "Not authorised." };
+  const p = z
+    .object({ outletId: id, variantId: id, madeInAdvance: z.boolean(), reorder: z.number().int().min(0).max(100000).nullable() })
+    .safeParse({ outletId, variantId, madeInAdvance, reorder });
+  if (!p.success) return { ok: false, error: "Enter a whole number for the reorder level." };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("outlet_variants")
+    .update({ made_in_advance: p.data.madeInAdvance, ready_reorder: p.data.madeInAdvance ? p.data.reorder : null })
+    .eq("outlet_id", p.data.outletId)
+    .eq("variant_id", p.data.variantId);
+  if (error) return { ok: false, error: "Could not save." };
+  revalidatePath("/kitchen/production");
+  return { ok: true };
+}

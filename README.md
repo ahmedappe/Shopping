@@ -151,3 +151,12 @@ Set up once (Admin → **POS setup**): add tables, set the service charge % (din
 - `/pos/receipt/<id>` — 80 mm receipt. For printing with no dialog, start the POS browser with `--kiosk-printing` and set the receipt printer as the default printer.
 
 Not in 2A yet: advance-production counts (e.g. "9 chicken curry made"), voice entry, retail barcode POS extras, gift cards, multi-currency.
+
+## Phase 2B-1 – Made in advance & planner
+
+Run `supabase/migrations/0011_phase2b1_production.sql` in the Supabase SQL editor.
+
+- **POS setup → Where each item is made**: tick *Made in advance* per item and set "make more at".
+- **/kitchen/production**: kitchen/bar log what was made (+1/+5/+10, custom, wasted, set count, undo). Voice entry ("chicken curry 9 and egg roll 12") uses the browser's free speech recognition and always asks to confirm. Making an item uses up its recipe ingredients.
+- **POS**: sales take from ready portions first (no second deduction); any extra goes to the kitchen as normal. Voiding returns portions.
+- **/admin/plan**: big-order ingredient planner (needs vs on hand, copyable shopping list).

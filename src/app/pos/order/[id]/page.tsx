@@ -14,6 +14,8 @@ type OvRow = {
   price: number;
   station: "kitchen" | "bar" | null;
   stock: number;
+  made_in_advance: boolean;
+  ready_qty: number;
   variant: {
     option1: string | null;
     option2: string | null;
@@ -41,7 +43,7 @@ export default async function PosOrderPage({ params }: { params: Promise<{ id: s
     order.status === "open"
       ? supabase
           .from("outlet_variants")
-          .select("variant_id, price, station, stock, variant:product_variants!inner(option1, option2, sku, barcode, product:products!inner(name, category:categories(name)))")
+          .select("variant_id, price, station, stock, made_in_advance, ready_qty, variant:product_variants!inner(option1, option2, sku, barcode, product:products!inner(name, category:categories(name)))")
           .eq("outlet_id", order.outlet_id)
           .eq("is_active", true)
           .limit(2000)
@@ -59,6 +61,7 @@ export default async function PosOrderPage({ params }: { params: Promise<{ id: s
       category: r.variant!.product!.category?.name ?? "Other",
       station: r.station,
       stock: r.station ? null : r.stock,
+      ready: r.made_in_advance ? r.ready_qty : null,
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
 

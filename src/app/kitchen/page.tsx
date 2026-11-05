@@ -76,6 +76,7 @@ export default async function StationPage({ searchParams }: { searchParams: Prom
           <Link href={`/kitchen?outlet=${outlet.slug}&station=${station === "bar" ? "kitchen" : "bar"}`} className="rounded-lg border border-zinc-600 px-3 py-2 hover:bg-zinc-800">
             Switch to {station === "bar" ? "kitchen" : "bar"}
           </Link>
+          <Link href={`/kitchen/production?outlet=${outlet.slug}&station=${station}`} className="rounded-lg bg-white px-3 py-2 font-semibold text-black hover:bg-zinc-200">Made in advance</Link>
           <Link href={`/pos?outlet=${outlet.slug}`} className="inline-flex items-center gap-1 rounded-lg border border-zinc-600 px-3 py-2 hover:bg-zinc-800"><ArrowLeft className="size-4" /> POS</Link>
         </div>
       </div>

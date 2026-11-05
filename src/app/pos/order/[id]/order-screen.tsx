@@ -20,6 +20,8 @@ export type MenuItem = {
   station: "kitchen" | "bar" | null;
   /** Shelf items only (no kitchen / bar screen). */
   stock: number | null;
+  /** Made-in-advance items: portions already prepared. */
+  ready: number | null;
 };
 export type OrderLine = {
   id: string;
@@ -165,7 +167,7 @@ export function OrderScreen({ order, lines, menu }: { order: OrderData; lines: O
                     <span className="text-sm font-medium leading-tight">{m.label}</span>
                     <span className="mt-1 flex items-center justify-between text-xs text-zinc-500">
                       <span className="font-semibold text-zinc-900">{formatPrice(m.price)}</span>
-                      <span>{m.station === "kitchen" ? "Kitchen" : m.station === "bar" ? "Bar" : m.stock !== null ? `${m.stock} left` : ""}</span>
+                      <span>{m.ready !== null ? `${m.ready} ready` : m.station === "kitchen" ? "Kitchen" : m.station === "bar" ? "Bar" : m.stock !== null ? `${m.stock} left` : ""}</span>
                     </span>
                   </button>
                 </li>

@@ -19,6 +19,7 @@ const LINKS = [
   { href: "/pos", label: "Cafe POS", icon: MonitorSmartphone, roles: ["staff", "manager", "admin"] },
   { href: "/kitchen", label: "Kitchen / Bar", icon: ChefHat, roles: ["staff", "manager", "admin"] },
   { href: "/admin/recipes", label: "Recipes", icon: CookingPot, roles: ["staff", "manager", "admin"] },
+  { href: "/admin/plan", label: "Big order planner", icon: ClipboardList, roles: ["staff", "manager", "admin"] },
   { href: "/admin/pos-setup", label: "POS setup", icon: Settings, roles: ["manager", "admin"] },
   { href: "/admin/suppliers", label: "Suppliers", icon: Truck, roles: ["manager", "admin"] },
   { href: "/admin/categories", label: "Categories", icon: Tags, roles: ["staff", "manager", "admin"] },
