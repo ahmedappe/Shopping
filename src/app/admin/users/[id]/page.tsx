@@ -10,6 +10,7 @@ import { isDisabled, listUsers } from "../data";
 import { RoleBadge } from "../role-badge";
 import { UserManager } from "./user-manager";
 import { OutletAccess } from "./outlet-access";
+import { CompanyAccess } from "./company-access";
 import { getAdminOutlets } from "@/lib/admin-outlets";
 import { createClient } from "@/lib/supabase/server";
 
@@ -31,8 +32,15 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
     .eq("id", id)
     .maybeSingle();
   const company = (prof?.company ?? null) as unknown as { id: string; name: string } | null;
-  // Staff only get outlets of their own company.
-  const outlets = (await getAdminOutlets(me)).filter((o) => !company || o.company_id === company.id);
+  // Staff get outlets of the company they sign in with plus any extra companies an admin opened for them.
+  const [{ data: companyRows }, { data: extraRows }] = await Promise.all([
+    supabase.from("companies").select("id, name").order("sort_order"),
+    supabase.from("user_companies").select("company_id").eq("user_id", id),
+  ]);
+  const companies = (companyRows ?? []) as { id: string; name: string }[];
+  const extraCompanies = (extraRows ?? []).map((r) => r.company_id as string);
+  const allowedCompanies = new Set([...(company ? [company.id] : []), ...extraCompanies]);
+  const outlets = (await getAdminOutlets(me)).filter((o) => !company || (o.company_id && allowedCompanies.has(o.company_id)));
   const { data: assignedRows } = await supabase.from("outlet_users").select("outlet_id").eq("user_id", id);
   const assigned = (assignedRows ?? []).map((r) => r.outlet_id as string);
 
@@ -68,6 +76,10 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
         isMe={isMe}
         hasKey={hasAdminKey()}
       />
+
+      {(user.role === "staff" || user.role === "manager") && company && (
+        <CompanyAccess userId={user.id} homeCompanyId={company.id} companies={companies} assigned={extraCompanies} />
+      )}
 
       {(user.role === "staff" || user.role === "manager") && (
         <OutletAccess userId={user.id} outlets={outlets} assigned={assigned} />

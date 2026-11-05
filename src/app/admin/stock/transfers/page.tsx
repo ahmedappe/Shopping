@@ -5,7 +5,7 @@ import { requireCatalogEditor } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminOutlets } from "@/lib/admin-outlets";
 import { formatDate, variantLabel } from "@/lib/utils";
-import { TransferForm, type VariantChoice } from "./transfer-form";
+import { TransferBuilder, type BuilderItem } from "@/components/admin/transfer-builder";
 import { DecideButtons } from "./decide-buttons";
 
 export const metadata: Metadata = { title: "Stock transfers" };
@@ -21,6 +21,7 @@ type Row = {
   status: "pending" | "approved" | "rejected";
   created_at: string;
   decided_at: string | null;
+  batch_id: string | null;
   variant: { option1: string | null; option2: string | null; product: { name: string } | null } | null;
 };
 
@@ -47,20 +48,53 @@ export default async function StockTransfersPage() {
   const [{ data: transfers }, { data: variantRows }] = await Promise.all([
     supabase
       .from("stock_transfers")
-      .select("id, from_outlet, from_location, to_outlet, to_location, quantity, note, status, created_at, decided_at, variant:product_variants(option1, option2, product:products(name))")
+      .select("id, from_outlet, from_location, to_outlet, to_location, quantity, note, status, created_at, decided_at, batch_id, variant:product_variants(option1, option2, product:products(name))")
       .order("created_at", { ascending: false })
       .limit(100),
     supabase
       .from("product_variants")
-      .select("id, option1, option2, product:products(name)")
+      .select("id, option1, option2, sku, barcode, product:products(name, unit)")
       .order("product_id")
-      .limit(2000),
+      .limit(5000),
   ]);
+  const { data: stockRows } = outlets.length
+    ? await supabase.from("outlet_variants").select("outlet_id, variant_id, stock, godown_stock").in("outlet_id", outlets.map((o) => o.id)).limit(20000)
+    : { data: [] };
+  const stock = Object.fromEntries(
+    ((stockRows ?? []) as { outlet_id: string; variant_id: string; stock: number; godown_stock: number }[]).map((r) => [
+      `${r.outlet_id}:${r.variant_id}`,
+      { shop: r.stock, godown: r.godown_stock },
+    ]),
+  );
 
   const rows = (transfers ?? []) as unknown as Row[];
-  const variants: VariantChoice[] = ((variantRows ?? []) as unknown as { id: string; option1: string | null; option2: string | null; product: { name: string } | null }[])
-    .map((v) => ({ id: v.id, label: `${v.product?.name ?? "Item"}${variantLabel(v) ? ` · ${variantLabel(v)}` : ""}` }))
+  const items: BuilderItem[] = (
+    (variantRows ?? []) as unknown as {
+      id: string;
+      option1: string | null;
+      option2: string | null;
+      sku: string | null;
+      barcode: string | null;
+      product: { name: string; unit: string | null } | null;
+    }[]
+  )
+    .map((v) => ({
+      id: v.id,
+      label: `${v.product?.name ?? "Item"}${variantLabel(v) ? ` · ${variantLabel(v)}` : ""}`,
+      sku: v.sku,
+      barcode: v.barcode,
+      unit: v.product?.unit ?? "pcs",
+    }))
     .sort((a, b) => a.label.localeCompare(b.label));
+
+  // Pending lines per multi-item transfer, so one Approve button covers the whole list.
+  const pendingPerBatch = new Map<string, number>();
+  const firstLineOfBatch = new Map<string, string>();
+  for (const t of rows) {
+    if (!t.batch_id || t.status !== "pending") continue;
+    pendingPerBatch.set(t.batch_id, (pendingPerBatch.get(t.batch_id) ?? 0) + 1);
+    if (!firstLineOfBatch.has(t.batch_id)) firstLineOfBatch.set(t.batch_id, t.id);
+  }
 
   const place = (outlet: string, loc: string) => `${outletName.get(outlet) ?? "Outlet"} ${loc}`;
 
@@ -76,7 +110,13 @@ export default async function StockTransfersPage() {
 
       <section className="card mt-6 p-5">
         <h2 className="font-semibold">Request a transfer</h2>
-        <TransferForm outlets={allOutlets} variants={variants} />
+        <p className="text-xs text-zinc-500">Add as many items as you need, then confirm once.</p>
+        <TransferBuilder
+          outlets={allOutlets.map((o) => ({ id: o.id, name: o.name }))}
+          items={items}
+          stock={stock}
+          checkStockFor={user.outletIds}
+        />
       </section>
 
       <section className="card mt-6 overflow-x-auto">
@@ -110,7 +150,16 @@ export default async function StockTransfersPage() {
                 <td className="px-4 py-3 text-right">{t.status === "pending" &&
                     user.canManageStore &&
                     (user.isAdmin || outletCompany.get(t.from_outlet) === outletCompany.get(t.to_outlet) ? (
-                      <DecideButtons id={t.id} />
+                      t.batch_id ? (
+                        // Show the batch buttons once, on the first pending line of the list.
+                        firstLineOfBatch.get(t.batch_id) === t.id ? (
+                          <DecideButtons batchId={t.batch_id} count={pendingPerBatch.get(t.batch_id)} />
+                        ) : (
+                          <span className="text-xs text-zinc-500">Same list</span>
+                        )
+                      ) : (
+                        <DecideButtons id={t.id} />
+                      )
                     ) : (
                       <span className="text-xs text-zinc-500">Admin approves</span>
                     ))}</td>

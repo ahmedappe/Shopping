@@ -24,6 +24,8 @@ const MESSAGES: Record<string, string> = {
   NOT_ENOUGH_STOCK: "Not enough stock at the source to move that many.",
   ALREADY_DECIDED: "This transfer was already decided.",
   TRANSFER_NOT_FOUND: "Transfer not found.",
+  NO_LINES: "Add at least one item.",
+  TOO_MANY_LINES: "Up to 200 items per transfer.",
 };
 
 function friendly(message: string) {
@@ -63,4 +65,59 @@ export async function decideTransfer(id: string, approve: boolean, note?: string
   revalidatePath("/admin/stock");
   revalidatePath("/", "layout");
   return { ok: true, message: approve ? "Approved. Stock moved." : "Rejected." };
+}
+
+const batchSchema = z.object({
+  fromOutlet: z.string().uuid("Choose where it is coming from."),
+  fromLocation: z.enum(["shop", "godown"]),
+  toOutlet: z.string().uuid("Choose where it is going."),
+  toLocation: z.enum(["shop", "godown"]),
+  lines: z
+    .array(
+      z.object({
+        variantId: z.string().uuid(),
+        quantity: z.coerce.number().int("Quantities must be whole numbers.").min(1, "Every quantity must be at least 1.").max(1_000_000),
+      }),
+    )
+    .min(1, "Add at least one item.")
+    .max(200, "Up to 200 items per transfer."),
+  note: z.string().trim().max(500),
+});
+
+/** One transfer request with many items (same from/to). Lines for the same item are added together. */
+export async function requestTransferBatch(input: unknown): Promise<ActionResult> {
+  if (!(await getCatalogEditorOrNull())) return { ok: false, error: "Not authorised." };
+  const parsed = batchSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the list." };
+  const d = parsed.data;
+
+  const merged = new Map<string, number>();
+  for (const l of d.lines) merged.set(l.variantId, (merged.get(l.variantId) ?? 0) + l.quantity);
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("request_stock_transfer_batch", {
+    p_from_outlet: d.fromOutlet,
+    p_from_location: d.fromLocation,
+    p_to_outlet: d.toOutlet,
+    p_to_location: d.toLocation,
+    p_lines: [...merged].map(([variant_id, quantity]) => ({ variant_id, quantity })),
+    p_note: d.note || null,
+  });
+  if (error) return { ok: false, error: friendly(error.message) };
+  revalidatePath("/admin/stock/transfers");
+  return { ok: true, message: `Transfer of ${merged.size} item${merged.size === 1 ? "" : "s"} requested. A manager or admin needs to approve it.` };
+}
+
+/** Approve or reject every pending line of a multi-item transfer at once. */
+export async function decideTransferBatch(batchId: string, approve: boolean, note?: string): Promise<ActionResult> {
+  if (!(await getManagerOrNull())) return { ok: false, error: "Only managers and admins can approve transfers." };
+  if (!z.string().uuid().safeParse(batchId).success) return { ok: false, error: "Invalid transfer." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("decide_stock_transfer_batch", { p_batch: batchId, p_approve: approve, p_note: note?.trim() || null });
+  if (error) return { ok: false, error: friendly(error.message) };
+  revalidatePath("/admin/stock/transfers");
+  revalidatePath("/admin/stock");
+  revalidatePath("/", "layout");
+  return { ok: true, message: approve ? "Approved. All items moved." : "Rejected." };
 }
