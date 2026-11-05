@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeftRight, Boxes, Building2, ClipboardList, History, LayoutGrid, LayoutDashboard, Package, ShoppingCart, Store, Tags, Truck, Users, Warehouse } from "lucide-react";
+import { ArrowLeftRight, Boxes, Building2, ChefHat, ClipboardList, CookingPot, History, LayoutGrid, LayoutDashboard, MonitorSmartphone, Package, Settings, ShoppingCart, Store, Tags, Truck, Users, Warehouse } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Role = "customer" | "staff" | "manager" | "admin";
@@ -16,6 +16,10 @@ const LINKS = [
   { href: "/admin/stock/reorder", label: "Reorder list", icon: ClipboardList, roles: ["staff", "manager", "admin"] },
   { href: "/admin/stock/transfers", label: "Transfers", icon: ArrowLeftRight, roles: ["staff", "manager", "admin"] },
   { href: "/godown", label: "Godown tablet", icon: Warehouse, roles: ["staff", "manager", "admin"] },
+  { href: "/pos", label: "Cafe POS", icon: MonitorSmartphone, roles: ["staff", "manager", "admin"] },
+  { href: "/kitchen", label: "Kitchen / Bar", icon: ChefHat, roles: ["staff", "manager", "admin"] },
+  { href: "/admin/recipes", label: "Recipes", icon: CookingPot, roles: ["staff", "manager", "admin"] },
+  { href: "/admin/pos-setup", label: "POS setup", icon: Settings, roles: ["manager", "admin"] },
   { href: "/admin/suppliers", label: "Suppliers", icon: Truck, roles: ["manager", "admin"] },
   { href: "/admin/categories", label: "Categories", icon: Tags, roles: ["staff", "manager", "admin"] },
   { href: "/admin/outlets", label: "Outlets", icon: Building2, roles: ["admin"] },

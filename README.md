@@ -136,3 +136,18 @@ supabase/
 - Email/SMS notifications when an order status changes
 - Rate limiting on sign-up and checkout (e.g. Vercel Firewall or Upstash)
 - Generate Supabase TypeScript types: `npx supabase gen types typescript --project-id <id> > src/lib/database.types.ts`
+
+## Phase 2A — Cafe POS, kitchen and bar, recipes
+
+Run `supabase/migrations/0010_phase2a_cafe_pos.sql` in the Supabase SQL editor (after 0009).
+
+Set up once (Admin → **POS setup**): add tables, set the service charge % (dine-in only, admin), receipt header/footer, and choose for each menu item whether it goes to the **Kitchen**, the **Bar**, or no screen (sold from stock).
+
+- `/pos?outlet=<slug>` — tables board with live "seated for" timers, take-away and delivery orders, guest bell / waiter / bill requests.
+- `/pos/order/<id>` — search or scan items, add notes, **Send** to kitchen/bar, mark served, void, split payment (cash / card / transfer; card and transfer need a reference), manager-only discount, receipt.
+- `/kitchen?outlet=<slug>&station=kitchen|bar` — separate full-screen kitchen and bar boards (Start → Ready). Refreshes every few seconds.
+- `/t/<token>` — public table menu from the table QR, with Ring bell / Call waiter / Ask for bill. Print each table's QR from POS setup.
+- Admin → **Recipes**: ingredients (per company), stock per outlet, reorder level, and the recipe of each menu item. Each sale deducts the recipe from the outlet's ingredient stock (it may go below zero if counts lag; shown in red).
+- `/pos/receipt/<id>` — 80 mm receipt. For printing with no dialog, start the POS browser with `--kiosk-printing` and set the receipt printer as the default printer.
+
+Not in 2A yet: advance-production counts (e.g. "9 chicken curry made"), voice entry, retail barcode POS extras, gift cards, multi-currency.
