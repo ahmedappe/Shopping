@@ -18,22 +18,28 @@ export function GuestButtons({ token }: { token: string }) {
     setNote(null);
     start(async () => {
       const res = await sendTableRequest(token, kind);
-      setNote(res.ok ? "Done — someone is on the way." : res.error);
+      setNote(res.ok ? "Sent. Someone is coming." : res.error);
     });
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 border-t bg-white/95 p-3 backdrop-blur">
-      <div className="mx-auto max-w-xl">
-        {note && <p className="mb-2 text-center text-sm font-medium text-emerald-700">{note}</p>}
-        <div className="grid grid-cols-3 gap-2">
-          {BUTTONS.map(({ kind, label, icon: Icon }) => (
-            <button key={kind} type="button" disabled={pending} onClick={() => tap(kind)} className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border bg-white text-sm font-semibold active:bg-zinc-100">
-              <Icon className="size-5" /> {label}
-            </button>
-          ))}
-        </div>
-      </div>
+    <div className="fixed right-2 top-1/2 z-40 flex -translate-y-1/2 flex-col items-stretch gap-2">
+      {BUTTONS.map(({ kind, label, icon: Icon }) => (
+        <button
+          key={kind}
+          type="button"
+          disabled={pending}
+          onClick={() => tap(kind)}
+          className="flex w-[4.5rem] flex-col items-center justify-center gap-1 rounded-2xl border bg-white px-1 py-3 text-center text-[11px] font-semibold leading-tight shadow-lg active:bg-zinc-100 disabled:opacity-60"
+        >
+          <Icon className="size-6" /> {label}
+        </button>
+      ))}
+      {note && (
+        <p role="status" className="w-[4.5rem] rounded-xl bg-emerald-600 px-1.5 py-2 text-center text-[11px] font-medium leading-tight text-white shadow-lg">
+          {note}
+        </p>
+      )}
     </div>
   );
 }
