@@ -40,7 +40,7 @@ export default async function TableMenuPage({ params }: { params: Promise<{ toke
   const sorted = [...groups.entries()].sort((a, b) => a[1].order - b[1].order || a[0].localeCompare(b[0]));
 
   return (
-    <main className="mx-auto min-h-dvh max-w-xl px-4 pb-32 pt-6">
+    <main className="mx-auto min-h-dvh max-w-xl py-6 pl-4 pr-24">
       <header className="text-center">
         <h1 className="text-2xl font-bold">{t.outlet_name}</h1>
         <p className="text-zinc-500">Table {t.table_name}</p>
