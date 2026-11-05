@@ -95,9 +95,21 @@ Rules are enforced in the database (Row Level Security) as well as in the app.
 Creating users, resetting passwords and disabling accounts need `SUPABASE_SERVICE_ROLE_KEY`
 (Supabase → Project Settings → API keys → secret / service_role) set in Vercel.
 
-Database updates to run in order: `0001_init.sql`, `0002_order_collection.sql`, `0003_staff_roles_and_users.sql`, `0004_slip_validation.sql`.
+Database updates to run in order: `0001_init.sql` to `0009_phase1_foundation.sql`.
 
 **Receipt checks:** when a customer uploads a bank receipt, the browser reads its text (Tesseract OCR) and the server checks amount, our account, date and reference. Nothing is blocked: an image that isn't a receipt, a wrong amount or account, an odd date or a reused receipt is still accepted but flagged for you on the order page and orders list. It is only a first filter; always still compare the slip image. Run `0004_slip_validation.sql` in the Supabase SQL editor **before** deploying this version.
+
+## Phase 1 foundation (migration `0009_phase1_foundation.sql`)
+
+Run `0009_phase1_foundation.sql` in the Supabase SQL editor **before** deploying this version (after 0001–0008).
+
+- **Company access** (Users → user): staff sign in with one company but can be given extra companies, then outlets in any of them.
+- **Suppliers** (`/admin/suppliers`, managers): kept per company.
+- **Purchasing & reorder** card on each product: brand, unit, main supplier and supplier code per company, barcode per variant, **cost price (managers and admins only — staff and customers can never read it)**, price levels 2–4, reorder level, reorder quantity and shelf per outlet. Price level names are in `store_settings.price_level_names`.
+- **Reorder list** (`/admin/stock/reorder`): items at or below their reorder level (shop + godown), grouped by supplier, with editable quantities and a **Copy message** button for WhatsApp/Viber/SMS.
+- **Multi-item transfers**: one request with many items; managers approve or reject the whole list at once.
+- **Godown tablet** (`/godown`): full-screen page for a tablet at the godown — search by name, rough spelling or barcode, enter quantity, add more, confirm once. Bookmark `/godown?outlet=<slug>` on the tablet.
+- **Audit log** (`/admin/audit`, admins): every insert, change and delete on products, prices, stock, costs, transfers, orders, suppliers, outlets, users and access. Nobody can edit or delete it.
 
 ## Store settings
 Delivery fee and free-delivery threshold are in the `store_settings` table (defaults: 30 and free over 500). Change them in Supabase → Table Editor → `store_settings`.

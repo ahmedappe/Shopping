@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Boxes, Building2, LayoutGrid, LayoutDashboard, Package, ShoppingCart, Store, Tags, Users } from "lucide-react";
+import { ArrowLeftRight, Boxes, Building2, ClipboardList, History, LayoutGrid, LayoutDashboard, Package, ShoppingCart, Store, Tags, Truck, Users, Warehouse } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Role = "customer" | "staff" | "manager" | "admin";
@@ -12,10 +12,15 @@ const LINKS = [
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart, roles: ["manager", "admin"] },
   { href: "/admin/products", label: "Products", icon: Package, roles: ["staff", "manager", "admin"] },
   { href: "/admin/overview", label: "Outlets overview", icon: LayoutGrid, roles: ["manager", "admin"] },
-  { href: "/admin/stock", label: "Stock", icon: Boxes, roles: ["staff", "manager", "admin"] },
+  { href: "/admin/stock", label: "Stock", icon: Boxes, exact: true, roles: ["staff", "manager", "admin"] },
+  { href: "/admin/stock/reorder", label: "Reorder list", icon: ClipboardList, roles: ["staff", "manager", "admin"] },
+  { href: "/admin/stock/transfers", label: "Transfers", icon: ArrowLeftRight, roles: ["staff", "manager", "admin"] },
+  { href: "/godown", label: "Godown tablet", icon: Warehouse, roles: ["staff", "manager", "admin"] },
+  { href: "/admin/suppliers", label: "Suppliers", icon: Truck, roles: ["manager", "admin"] },
   { href: "/admin/categories", label: "Categories", icon: Tags, roles: ["staff", "manager", "admin"] },
   { href: "/admin/outlets", label: "Outlets", icon: Building2, roles: ["admin"] },
   { href: "/admin/users", label: "Users", icon: Users, roles: ["admin"] },
+  { href: "/admin/audit", label: "Audit log", icon: History, roles: ["admin"] },
 ] as const;
 
 export function AdminNav({ role }: { role: Role }) {

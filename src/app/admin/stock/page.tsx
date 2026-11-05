@@ -71,7 +71,11 @@ export default async function AdminStockPage({ searchParams }: { searchParams: P
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold tracking-tight">Stock</h1>
-        <Link href="/admin/stock/transfers" className="btn-primary">Stock transfers</Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/admin/stock/reorder" className="btn-outline">Reorder list</Link>
+          <Link href="/godown" className="btn-outline">Godown tablet</Link>
+          <Link href="/admin/stock/transfers" className="btn-primary">Stock transfers</Link>
+        </div>
       </div>
       <p className="mt-1 text-sm text-zinc-500">
         Each outlet shows shop stock / godown stock, then the company total (shop + godown){user.isAdmin ? "" : " across your outlets"}. Change a count from the product page.

@@ -161,3 +161,19 @@ export async function setUserOutlets(userId: string, outletIds: string[]): Promi
   refresh(parsed.data.userId);
   return { ok: true, message: "Outlet access saved." };
 }
+
+/** Extra companies a staff member may work in (besides the company they sign in with). */
+export async function setUserCompanies(userId: string, companyIds: string[]): Promise<ActionResult> {
+  if (!(await getAdminOrNull())) return { ok: false, error: "Only admins can give company access." };
+  const parsed = z.object({ userId: z.string().uuid(), ids: z.array(z.string().uuid()).max(20) }).safeParse({ userId, ids: companyIds });
+  if (!parsed.success) return { ok: false, error: "Invalid request." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_set_user_companies", {
+    p_user_id: parsed.data.userId,
+    p_company_ids: parsed.data.ids,
+  });
+  if (error) return { ok: false, error: friendlyDbError(error.message) };
+  refresh(parsed.data.userId);
+  return { ok: true, message: "Company access saved. Now tick the outlets they can use." };
+}

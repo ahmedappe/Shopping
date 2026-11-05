@@ -7,7 +7,8 @@ import { requireCatalogEditor } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getCategories } from "@/lib/catalog";
 import { productImageUrl } from "@/lib/storage";
-import { getAdminOutlets } from "@/lib/admin-outlets";
+import { getAdminCompanies, getAdminOutlets } from "@/lib/admin-outlets";
+import { Purchasing, type PurchasingData } from "../purchasing";
 import { ProductForm } from "../product-form";
 import { OutletPricing, type PricingCell } from "../outlet-pricing";
 import { ImageManager } from "../image-manager";
@@ -41,7 +42,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     variantIds.length && outlets.length
       ? await supabase
           .from("outlet_variants")
-          .select("outlet_id, variant_id, price, stock, godown_stock, is_active")
+          .select("outlet_id, variant_id, price, stock, godown_stock, is_active, price_level2, price_level3, price_level4, reorder_level, reorder_qty, shelf_location")
           .in("variant_id", variantIds)
           .in("outlet_id", outlets.map((o) => o.id))
       : { data: [] };
@@ -50,6 +51,66 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     initial[`${r.outlet_id}:${r.variant_id}`] = { sold: r.is_active, price: String(r.price), stock: String(r.stock), godown: String(r.godown_stock) };
   }
   const defaults = Object.fromEntries(product.product_variants.map((v) => [v.id, String(v.price)]));
+
+  // Purchasing & reorder: suppliers, barcode, cost (managers only), price levels, reorder and shelf per outlet.
+  const companies = await getAdminCompanies(user);
+  const [{ data: supplierRows }, { data: linkRows }, { data: costRows }, { data: settings }] = await Promise.all([
+    companies.length
+      ? supabase.from("suppliers").select("id, name, company_id").in("company_id", companies.map((c) => c.id)).eq("is_active", true).order("name")
+      : Promise.resolve({ data: [] }),
+    supabase.from("product_suppliers").select("supplier_id, supplier_code, is_main").eq("product_id", product.id),
+    user.canManageStore && variantIds.length
+      ? supabase.from("variant_costs").select("variant_id, cost").in("variant_id", variantIds)
+      : Promise.resolve({ data: [] }),
+    supabase.from("store_settings").select("price_level_names").maybeSingle(),
+  ]);
+  const suppliers = (supplierRows ?? []) as { id: string; name: string; company_id: string }[];
+  const links = (linkRows ?? []) as { supplier_id: string; supplier_code: string | null; is_main: boolean }[];
+  const costs = new Map(((costRows ?? []) as { variant_id: string; cost: number }[]).map((c) => [c.variant_id, String(c.cost)]));
+  const str = (n: number | null | undefined) => (n == null ? "" : String(n));
+  const purchasing: PurchasingData = {
+    brand: (data as { brand?: string | null }).brand ?? "",
+    unit: (data as { unit?: string | null }).unit ?? "pcs",
+    companies: companies.map((c) => {
+      const own = suppliers.filter((s) => s.company_id === c.id);
+      const link = links.find((l) => own.some((s) => s.id === l.supplier_id));
+      return { id: c.id, name: c.name, suppliers: own.map((s) => ({ id: s.id, name: s.name })), supplierId: link?.supplier_id ?? "", code: link?.supplier_code ?? "" };
+    }),
+    variants: product.product_variants.map((v) => ({
+      id: v.id,
+      option1: v.option1,
+      option2: v.option2,
+      barcode: (v as Variant & { barcode?: string | null }).barcode ?? "",
+      cost: costs.get(v.id) ?? "",
+    })),
+    outlets: outlets.map((o) => ({ id: o.id, name: o.name })),
+    cells: Object.fromEntries(
+      (
+        (ovRows ?? []) as {
+          outlet_id: string;
+          variant_id: string;
+          price_level2: number | null;
+          price_level3: number | null;
+          price_level4: number | null;
+          reorder_level: number | null;
+          reorder_qty: number | null;
+          shelf_location: string | null;
+        }[]
+      ).map((r) => [
+        `${r.outlet_id}:${r.variant_id}`,
+        {
+          level2: str(r.price_level2),
+          level3: str(r.price_level3),
+          level4: str(r.price_level4),
+          reorderLevel: str(r.reorder_level),
+          reorderQty: str(r.reorder_qty),
+          shelf: r.shelf_location ?? "",
+        },
+      ]),
+    ),
+    levelNames: ((settings?.price_level_names as string[] | null) ?? ["Retail", "Wholesale", "Staff", "Corporate"]).concat(["Level 2", "Level 3", "Level 4"]).slice(0, 4),
+    canSeeCost: user.canManageStore,
+  };
 
   return (
     <div className="max-w-4xl">
@@ -88,6 +149,15 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           initial={initial}
           defaults={defaults}
         />
+      </section>
+
+      <section className="card mt-6 p-5">
+        <h2 className="font-semibold">Purchasing &amp; reorder</h2>
+        <p className="text-xs text-zinc-500">
+          Brand, unit, main supplier and barcode. For each outlet: extra price levels, the stock level that puts the item on the reorder list, how many to order and its shelf.
+          Reorder settings appear for an outlet once the item is saved as sold there above.
+        </p>
+        <Purchasing productId={product.id} data={purchasing} />
       </section>
 
       <ProductForm
