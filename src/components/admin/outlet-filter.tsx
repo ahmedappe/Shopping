@@ -40,7 +40,7 @@ export function OutletFilter({
   );
   return (
     <div className="flex flex-wrap gap-2">
-      {item(allLabel)}
+      {allLabel !== "" && item(allLabel)}
       {outlets.map((o) => item(o.name, o.slug))}
     </div>
   );
