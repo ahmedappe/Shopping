@@ -72,12 +72,12 @@ export default async function PosOrderPage({ params }: { params: Promise<{ id: s
   const rates = (rateRows ?? []).map((r) => ({ code: r.code as string, rate: Number(r.rate_to_mvr) }));
   const [{ data: custRow }, { data: staffRows }] = await Promise.all([
     order.customer_id
-      ? supabase.from("outlet_customers").select("id, name, phone, points_balance, referral_code, credit_limit, credit_balance").eq("id", order.customer_id as string).maybeSingle()
+      ? supabase.from("outlet_customers").select("id, name, phone, points_balance, referral_code, credit_limit, credit_balance, business_name, tin").eq("id", order.customer_id as string).maybeSingle()
       : Promise.resolve({ data: null }),
     order.order_type === "delivery" ? supabase.rpc("outlet_staff", { p_outlet: order.outlet_id as string }) : Promise.resolve({ data: [] }),
   ]);
   const customer = custRow
-    ? { id: custRow.id as string, name: custRow.name as string, phone: custRow.phone as string, points: Number(custRow.points_balance), referralCode: custRow.referral_code as string, creditLimit: Number(custRow.credit_limit), creditBalance: Number(custRow.credit_balance) }
+    ? { id: custRow.id as string, name: custRow.name as string, phone: custRow.phone as string, points: Number(custRow.points_balance), referralCode: custRow.referral_code as string, creditLimit: Number(custRow.credit_limit), creditBalance: Number(custRow.credit_balance), businessName: (custRow.business_name as string | null) ?? "", tin: (custRow.tin as string | null) ?? "" }
     : null;
   const staff = ((staffRows ?? []) as { user_id: string; name: string }[]).map((s) => ({ id: s.user_id, name: s.name }));
   const table = order.table as unknown as { name: string } | null;
