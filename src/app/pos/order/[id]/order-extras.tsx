@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Bike, UserRound, X } from "lucide-react";
 import { assignDelivery, attachCustomer, detachCustomer, findCustomers, type CustomerHit } from "../../actions";
 
-export type OrderCustomer = { id: string; name: string; phone: string; points: number; referralCode: string };
+export type OrderCustomer = { id: string; name: string; phone: string; points: number; referralCode: string; creditLimit: number; creditBalance: number };
 export type DeliveryInfo = { by: string | null; status: "assigned" | "out" | "delivered" | null; address: string };
 export type StaffOption = { id: string; name: string };
 
@@ -61,6 +61,7 @@ export function OrderExtras({ orderId, outletId, open, customer, loyaltyOn, isDe
             <div>
               <p className="font-medium">{customer.name} · {customer.phone}</p>
               {loyaltyOn && <p className="text-zinc-600">{customer.points} points · referral code {customer.referralCode}</p>}
+              {(customer.creditLimit > 0 || customer.creditBalance > 0) && <p className="text-zinc-600">Owes {customer.creditBalance.toFixed(2)} · limit {customer.creditLimit.toFixed(2)}</p>}
             </div>
             {open && (
               <button type="button" aria-label="Remove customer" className="btn-ghost" disabled={pending} onClick={() => run(() => detachCustomer(orderId))}><X className="size-4" /></button>
