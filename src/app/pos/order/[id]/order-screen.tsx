@@ -8,6 +8,7 @@ import { searchItems } from "@/lib/item-search";
 import { cn, formatPrice } from "@/lib/utils";
 import { ITEM_STATUS_LABEL, ORDER_TYPE_LABEL } from "@/lib/pos-labels";
 import { Elapsed } from "@/components/pos/elapsed";
+import { OrderExtras, type DeliveryInfo, type OrderCustomer, type StaffOption } from "./order-extras";
 import { addItems, cancelOrder, closeOrder, setItemStatus, voidItem } from "../../actions";
 
 export type MenuItem = {
@@ -52,8 +53,9 @@ export type OrderData = {
   canManage: boolean;
 };
 type Draft = { id: string; qty: number; note: string };
-type Pay = { method: "cash" | "card" | "transfer" | "gift_card"; amount: string; reference: string; currency: string };
+type Pay = { method: "cash" | "card" | "transfer" | "gift_card" | "points"; amount: string; reference: string; currency: string };
 export type Rate = { code: string; rate: number };
+export type Extras = { orderId: string; outletId: string; customer: OrderCustomer | null; pointValue: number; loyaltyOn: boolean; isDelivery: boolean; delivery: DeliveryInfo; staff: StaffOption[] };
 
 const STATUS_STYLE: Record<OrderLine["status"], string> = {
   new: "bg-zinc-100 text-zinc-700",
@@ -63,7 +65,7 @@ const STATUS_STYLE: Record<OrderLine["status"], string> = {
   void: "bg-red-100 text-red-700 line-through",
 };
 
-export function OrderScreen({ order, lines, menu, rates }: { order: OrderData; lines: OrderLine[]; menu: MenuItem[]; rates: Rate[] }) {
+export function OrderScreen({ order, lines, menu, rates, extras }: { order: OrderData; lines: OrderLine[]; menu: MenuItem[]; rates: Rate[]; extras: Extras }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -88,7 +90,7 @@ export function OrderScreen({ order, lines, menu, rates }: { order: OrderData; l
   const scNow = order.type === "dine_in" ? Math.round(Math.max(order.subtotal - discountNum, 0) * order.serviceChargePct) / 100 : 0;
   const totalNow = Math.max(order.subtotal - discountNum, 0) + scNow;
   const rateOf = (c: string) => (c === "MVR" ? 1 : rates.find((r) => r.code === c)?.rate ?? 0);
-  const mvrOf = (p: Pay) => Math.round((Number(p.amount) || 0) * rateOf(p.currency) * 100) / 100;
+  const mvrOf = (p: Pay) => Math.round((Number(p.amount) || 0) * (p.method === "points" ? extras.pointValue : rateOf(p.currency)) * 100) / 100;
   const paidSum = pays.reduce((n, p) => n + mvrOf(p), 0);
   const unserved = live.filter((l) => l.status !== "served").length;
 
@@ -119,7 +121,7 @@ export function OrderScreen({ order, lines, menu, rates }: { order: OrderData; l
 
   function confirmPay() {
     run(
-      () => closeOrder(order.id, discountNum, pays.filter((p) => Number(p.amount) > 0).map((p) => (p.currency !== "MVR" ? { method: p.method, currency: p.currency, foreignAmount: Number(p.amount), reference: p.reference || undefined } : { method: p.method, amount: Number(p.amount), reference: p.reference || undefined }))),
+      () => closeOrder(order.id, discountNum, pays.filter((p) => Number(p.amount) > 0).map((p) => (p.method === "points" ? { method: p.method, points: Math.floor(Number(p.amount)) } : p.currency !== "MVR" ? { method: p.method, currency: p.currency, foreignAmount: Number(p.amount), reference: p.reference || undefined } : { method: p.method, amount: Number(p.amount), reference: p.reference || undefined }))),
       () => router.push(`/pos/receipt/${order.id}?auto=1`),
     );
   }
@@ -144,6 +146,8 @@ export function OrderScreen({ order, lines, menu, rates }: { order: OrderData; l
           <Link href={`/pos?outlet=${order.outletSlug}`} className="btn-outline"><ArrowLeft className="size-4" /> Tables</Link>
         </div>
       </div>
+
+      <OrderExtras {...extras} open={open} />
 
       {msg && <p className={cn("mt-3 rounded-lg p-3 text-sm", msg.ok ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700")}>{msg.text}</p>}
 
@@ -294,16 +298,17 @@ export function OrderScreen({ order, lines, menu, rates }: { order: OrderData; l
               {pays.map((p, i) => (
                 <div key={i} className="rounded-lg border p-3">
                   <div className="flex gap-2">
-                    {(["cash", "card", "transfer", "gift_card"] as const).map((m) => (
+                    {(["cash", "card", "transfer", "gift_card", ...(extras.customer && extras.pointValue > 0 ? ["points" as const] : [])] as const).map((m) => (
                       <button key={m} type="button" onClick={() => setPays((x) => x.map((y, j) => (j === i ? { ...y, method: m, currency: m === "cash" ? y.currency : "MVR" } : y)))} className={cn("flex-1 rounded-lg border py-2 text-sm font-medium capitalize", p.method === m ? "border-zinc-900 bg-zinc-900 text-white" : "hover:bg-zinc-100")}>
                         {m === "gift_card" ? "gift card" : m}
                       </button>
                     ))}
                   </div>
                   <div className="mt-2 flex gap-2">
-                    <input className="input flex-1" inputMode="decimal" placeholder="Amount" value={p.amount} onChange={(e) => setPays((x) => x.map((y, j) => (j === i ? { ...y, amount: e.target.value.replace(/[^0-9.]/g, "") } : y)))} />
+                    <input className="input flex-1" inputMode="decimal" placeholder={p.method === "points" ? `Points (you have ${extras.customer?.points ?? 0})` : "Amount"} value={p.amount} onChange={(e) => setPays((x) => x.map((y, j) => (j === i ? { ...y, amount: e.target.value.replace(/[^0-9.]/g, "") } : y)))} />
                     {pays.length > 1 && <button type="button" className="btn-outline" onClick={() => setPays((x) => x.filter((_, j) => j !== i))}><Trash2 className="size-4" /></button>}
                   </div>
+                  {p.method === "points" && <p className="mt-2 text-sm text-zinc-600">1 point = {formatPrice(extras.pointValue)} → {formatPrice(mvrOf(p))}</p>}
                   {p.method === "cash" && rates.length > 0 && (
                     <div className="mt-2 flex items-center gap-2 text-sm">
                       <select className="input w-28" value={p.currency} onChange={(e) => setPays((x) => x.map((y, j) => (j === i ? { ...y, currency: e.target.value } : y)))}>
@@ -313,7 +318,7 @@ export function OrderScreen({ order, lines, menu, rates }: { order: OrderData; l
                       {p.currency !== "MVR" && <span className="text-zinc-600">× {rateOf(p.currency)} = {formatPrice(mvrOf(p))}</span>}
                     </div>
                   )}
-                  {p.method !== "cash" && (
+                  {p.method !== "cash" && p.method !== "points" && (
                     <input className="input mt-2" placeholder={p.method === "card" ? "Card approval / reference no." : p.method === "gift_card" ? "Gift card code" : "Transfer reference no."} value={p.reference} maxLength={80} onChange={(e) => setPays((x) => x.map((y, j) => (j === i ? { ...y, reference: e.target.value } : y)))} />
                   )}
                 </div>

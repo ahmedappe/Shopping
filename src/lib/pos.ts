@@ -38,6 +38,14 @@ export const POS_ERRORS: Record<string, string> = {
   BAD_CURRENCY: "Use a 3-letter currency code, like USD.",
   BAD_CODE: "Gift card codes are 4-20 letters, numbers or dashes.",
   CODE_EXISTS: "That gift card code is already used.",
+  NO_CUSTOMER: "Add the customer to the order before paying with points.",
+  LOYALTY_OFF: "Points are not switched on for this outlet.",
+  POINTS_BALANCE: "The customer does not have enough points.",
+  NAME_REQUIRED: "Enter the customer's name.",
+  BAD_PHONE: "Enter a valid phone number.",
+  BAD_REFERRAL: "That referral code does not exist at this outlet.",
+  NOT_DELIVERY: "This is not a delivery order.",
+  NO_DRIVER: "Choose who is delivering first.",
   OVERPAID_NON_CASH: "Card and transfer cannot be more than the total. Only cash gives change.",
 };
 

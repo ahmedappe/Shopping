@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getCatalogEditorOrNull } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { posError } from "@/lib/pos";
+import { sanitizeSearch } from "@/lib/utils";
 import type { ActionResult } from "@/lib/types";
 
 const id = z.string().uuid();
@@ -87,7 +88,7 @@ export async function cancelOrder(orderId: string, reason: string): Promise<Acti
 export async function closeOrder(
   orderId: string,
   discount: number,
-  payments: { method: "cash" | "card" | "transfer" | "gift_card"; amount?: number; currency?: string; foreignAmount?: number; reference?: string }[],
+  payments: { method: "cash" | "card" | "transfer" | "gift_card" | "points"; amount?: number; points?: number; currency?: string; foreignAmount?: number; reference?: string }[],
 ): Promise<ActionResult> {
   if (!(await guard())) return { ok: false, error: "Not authorised." };
   const p = z
@@ -95,7 +96,7 @@ export async function closeOrder(
       orderId: id,
       discount: z.number().min(0).max(1_000_000),
       payments: z
-        .array(z.object({ method: z.enum(["cash", "card", "transfer", "gift_card"]), amount: z.number().positive().max(10_000_000).optional(), currency: z.string().regex(/^[A-Z]{3}$/).optional(), foreignAmount: z.number().positive().max(10_000_000).optional(), reference: z.string().trim().max(80).optional() }).refine((x) => x.amount !== undefined || (x.currency && x.foreignAmount !== undefined)))
+        .array(z.object({ method: z.enum(["cash", "card", "transfer", "gift_card", "points"]), amount: z.number().positive().max(10_000_000).optional(), points: z.number().int().positive().max(10_000_000).optional(), currency: z.string().regex(/^[A-Z]{3}$/).optional(), foreignAmount: z.number().positive().max(10_000_000).optional(), reference: z.string().trim().max(80).optional() }).refine((x) => x.amount !== undefined || x.points !== undefined || (x.currency && x.foreignAmount !== undefined)))
         .min(1)
         .max(10),
     })
@@ -105,7 +106,7 @@ export async function closeOrder(
   const { error } = await supabase.rpc("pos_close_order", {
     p_order: p.data.orderId,
     p_discount: p.data.discount,
-    p_payments: p.data.payments.map((x) => ({ method: x.method, amount: x.amount, currency: x.currency, foreign_amount: x.foreignAmount, reference: x.reference })),
+    p_payments: p.data.payments.map((x) => ({ method: x.method, amount: x.amount, currency: x.currency, foreign_amount: x.foreignAmount, points: x.points, reference: x.reference })),
   });
   if (error) return { ok: false, error: posError(error.message) };
   revalidatePath("/pos");
@@ -118,5 +119,64 @@ export async function resolveRequest(requestId: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { error } = await supabase.rpc("pos_resolve_request", { p_request: requestId });
   if (error) return { ok: false, error: posError(error.message) };
+  return { ok: true };
+}
+
+export type CustomerHit = { id: string; name: string; phone: string; points: number; referralCode: string };
+
+export async function findCustomers(outletId: string, query: string): Promise<CustomerHit[]> {
+  if (!(await guard())) return [];
+  const o = id.safeParse(outletId);
+  const q = sanitizeSearch(query);
+  if (!o.success || q.length < 2) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("outlet_customers")
+    .select("id, name, phone, points_balance, referral_code")
+    .eq("outlet_id", o.data)
+    .or(`name.ilike.%${q}%,phone.ilike.%${q}%`)
+    .order("name")
+    .limit(8);
+  return (data ?? []).map((c) => ({ id: c.id as string, name: c.name as string, phone: c.phone as string, points: Number(c.points_balance), referralCode: c.referral_code as string }));
+}
+
+/** Creates (or finds, by phone) a customer of this outlet and attaches them to the order. */
+export async function attachCustomer(orderId: string, outletId: string, input: { customerId?: string; name?: string; phone?: string; referralCode?: string }): Promise<ActionResult> {
+  if (!(await guard())) return { ok: false, error: "Not authorised." };
+  const p = z
+    .object({ orderId: id, outletId: id, customerId: id.optional(), name: z.string().trim().max(120).optional(), phone: z.string().trim().max(20).optional(), referralCode: z.string().trim().max(10).optional() })
+    .safeParse({ orderId, outletId, ...input });
+  if (!p.success) return { ok: false, error: "Check the customer details." };
+  const supabase = await createClient();
+  let customer = p.data.customerId;
+  if (!customer) {
+    const { data, error } = await supabase.rpc("customer_save", { p_outlet: p.data.outletId, p_name: p.data.name ?? "", p_phone: p.data.phone ?? "", p_referrer_code: p.data.referralCode ?? null });
+    if (error) return { ok: false, error: posError(error.message) };
+    customer = data as string;
+  }
+  const { error } = await supabase.rpc("pos_set_customer", { p_order: p.data.orderId, p_customer: customer });
+  if (error) return { ok: false, error: posError(error.message) };
+  revalidatePath(`/pos/order/${p.data.orderId}`);
+  return { ok: true };
+}
+
+export async function detachCustomer(orderId: string): Promise<ActionResult> {
+  if (!(await guard())) return { ok: false, error: "Not authorised." };
+  if (!id.safeParse(orderId).success) return { ok: false, error: "Check the order." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("pos_set_customer", { p_order: orderId, p_customer: null });
+  if (error) return { ok: false, error: posError(error.message) };
+  revalidatePath(`/pos/order/${orderId}`);
+  return { ok: true };
+}
+
+export async function assignDelivery(orderId: string, userId: string | null, address: string, status: "assigned" | "out" | "delivered"): Promise<ActionResult> {
+  if (!(await guard())) return { ok: false, error: "Not authorised." };
+  const p = z.object({ o: id, u: id.nullable(), a: z.string().trim().max(300), s: z.enum(["assigned", "out", "delivered"]) }).safeParse({ o: orderId, u: userId, a: address, s: status });
+  if (!p.success) return { ok: false, error: "Check the delivery details." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("pos_assign_delivery", { p_order: p.data.o, p_user: p.data.u, p_address: p.data.a || null, p_status: p.data.s });
+  if (error) return { ok: false, error: posError(error.message) };
+  revalidatePath(`/pos/order/${p.data.o}`);
   return { ok: true };
 }

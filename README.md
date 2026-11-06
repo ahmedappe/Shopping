@@ -168,3 +168,12 @@ Run `supabase/migrations/0012_phase2b2_cash_gift_currency.sql` (needs 0011).
 - **/pos/cash**: open the drawer with a starting float, cash in/out with a reason, close with a count. Managers see expected vs counted (over/short).
 - **Admin → Gift cards & currency**: issue (auto or typed code), top up, cancel gift cards (shared by all outlets of a company); set exchange rates (e.g. USD); admins can require an open drawer before cash sales.
 - **Payment screen**: new *gift card* method and cash in a foreign currency (recorded in MVR at the saved rate).
+
+## Phase 2B-3 – Customers, loyalty & referral points, delivery person
+
+Run `supabase/migrations/0013_phase2b3_customers_loyalty_delivery.sql` (needs 0012).
+
+- Customers are kept **separately per outlet**; add or find them on the order screen (name/phone). Each has a referral code.
+- **Admin → Customers & loyalty**: admin sets points per 100 MVR, value of a point, referral bonus (all 0 = off); managers can adjust points with a reason.
+- **Payment screen**: *points* method (needs a customer). Points are earned on money paid; the referrer gets a bonus on the friend's first paid order.
+- **Delivery orders**: pick the delivering staff member, address, and mark assigned / out / delivered.
