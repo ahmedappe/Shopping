@@ -18,7 +18,7 @@ export default async function PosSetupPage({ searchParams }: { searchParams: Pro
 
   const supabase = await createClient();
   const [{ data: o }, { data: tables }, { data: variants }] = await Promise.all([
-    supabase.from("outlets").select("service_charge_pct, receipt_header, receipt_footer").eq("id", outlet.id).single(),
+    supabase.from("outlets").select("service_charge_pct, receipt_header, receipt_footer, gst_number").eq("id", outlet.id).single(),
     supabase.from("dining_tables").select("id, name, seats, is_active, qr_token").eq("outlet_id", outlet.id).order("sort_order").order("name"),
     supabase
       .from("outlet_variants")
@@ -64,6 +64,7 @@ export default async function PosSetupPage({ searchParams }: { searchParams: Pro
         serviceChargePct={Number(o?.service_charge_pct ?? 0)}
         header={(o?.receipt_header as string | null) ?? ""}
         footer={(o?.receipt_footer as string | null) ?? ""}
+        gstNumber={(o?.gst_number as string | null) ?? ""}
       />
       <TablesEditor
         key={`t${outlet.id}`}

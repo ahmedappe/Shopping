@@ -9,10 +9,11 @@ import { addTable, saveOutletPos, setAdvance, setStation, updateTable } from "./
 export type TableRow = { id: string; name: string; seats: number; active: boolean; token: string };
 export type StationRow = { variantId: string; label: string; category: string; station: "kitchen" | "bar" | null; advance: boolean; reorder: number | null };
 
-export function OutletSettingsForm({ outletId, canEdit, serviceChargePct, header, footer }: { outletId: string; canEdit: boolean; serviceChargePct: number; header: string; footer: string }) {
+export function OutletSettingsForm({ outletId, canEdit, serviceChargePct, header, footer, gstNumber }: { outletId: string; canEdit: boolean; serviceChargePct: number; header: string; footer: string; gstNumber: string }) {
   const [pct, setPct] = useState(String(serviceChargePct));
   const [h, setH] = useState(header);
   const [f, setF] = useState(footer);
+  const [tin, setTin] = useState(gstNumber);
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   return (
@@ -24,12 +25,16 @@ export function OutletSettingsForm({ outletId, canEdit, serviceChargePct, header
           <input className="input" inputMode="decimal" value={pct} disabled={!canEdit} onChange={(e) => setPct(e.target.value.replace(/[^0-9.]/g, ""))} />
         </label>
         <label>
-          <span className="label">Receipt header (address, phone, GST no.)</span>
+          <span className="label">Receipt header (address, phone)</span>
           <textarea className="input" rows={3} maxLength={300} value={h} disabled={!canEdit} onChange={(e) => setH(e.target.value)} />
         </label>
         <label>
           <span className="label">Receipt footer</span>
           <textarea className="input" rows={3} maxLength={300} value={f} disabled={!canEdit} onChange={(e) => setF(e.target.value)} />
+        </label>
+        <label className="sm:col-span-3">
+          <span className="label">GST registration number (TIN) of this outlet's company</span>
+          <input className="input sm:max-w-xs" maxLength={40} value={tin} disabled={!canEdit} onChange={(e) => setTin(e.target.value)} placeholder="e.g. 1234567GST501" />
         </label>
       </div>
       {canEdit ? (
@@ -40,7 +45,7 @@ export function OutletSettingsForm({ outletId, canEdit, serviceChargePct, header
             disabled={pending}
             onClick={() =>
               start(async () => {
-                const res = await saveOutletPos({ outletId, serviceChargePct: Number(pct) || 0, header: h, footer: f });
+                const res = await saveOutletPos({ outletId, serviceChargePct: Number(pct) || 0, header: h, footer: f, gstNumber: tin });
                 setMsg({ ok: res.ok, text: res.ok ? "Saved." : res.error });
               })
             }
