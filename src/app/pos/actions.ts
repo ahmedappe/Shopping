@@ -123,6 +123,7 @@ export async function resolveRequest(requestId: string): Promise<ActionResult> {
 }
 
 export type CustomerHit = { id: string; name: string; phone: string; points: number; referralCode: string };
+export type BusinessInput = { businessName: string; tin: string };
 
 export async function findCustomers(outletId: string, query: string): Promise<CustomerHit[]> {
   if (!(await guard())) return [];
@@ -141,10 +142,10 @@ export async function findCustomers(outletId: string, query: string): Promise<Cu
 }
 
 /** Creates (or finds, by phone) a customer of this outlet and attaches them to the order. */
-export async function attachCustomer(orderId: string, outletId: string, input: { customerId?: string; name?: string; phone?: string; referralCode?: string }): Promise<ActionResult> {
+export async function attachCustomer(orderId: string, outletId: string, input: { customerId?: string; name?: string; phone?: string; referralCode?: string; business?: BusinessInput }): Promise<ActionResult> {
   if (!(await guard())) return { ok: false, error: "Not authorised." };
   const p = z
-    .object({ orderId: id, outletId: id, customerId: id.optional(), name: z.string().trim().max(120).optional(), phone: z.string().trim().max(20).optional(), referralCode: z.string().trim().max(10).optional() })
+    .object({ orderId: id, outletId: id, customerId: id.optional(), name: z.string().trim().max(120).optional(), phone: z.string().trim().max(20).optional(), referralCode: z.string().trim().max(10).optional(), business: z.object({ businessName: z.string().trim().max(120), tin: z.string().trim().max(40) }).optional() })
     .safeParse({ orderId, outletId, ...input });
   if (!p.success) return { ok: false, error: "Check the customer details." };
   const supabase = await createClient();
@@ -153,6 +154,10 @@ export async function attachCustomer(orderId: string, outletId: string, input: {
     const { data, error } = await supabase.rpc("customer_save", { p_outlet: p.data.outletId, p_name: p.data.name ?? "", p_phone: p.data.phone ?? "", p_referrer_code: p.data.referralCode ?? null });
     if (error) return { ok: false, error: posError(error.message) };
     customer = data as string;
+    if (p.data.business && (p.data.business.businessName || p.data.business.tin)) {
+      const { error: be } = await supabase.rpc("customer_set_business", { p_customer: customer, p_business_name: p.data.business.businessName, p_tin: p.data.business.tin });
+      if (be) return { ok: false, error: posError(be.message) };
+    }
   }
   const { error } = await supabase.rpc("pos_set_customer", { p_order: p.data.orderId, p_customer: customer });
   if (error) return { ok: false, error: posError(error.message) };
@@ -176,6 +181,18 @@ export async function assignDelivery(orderId: string, userId: string | null, add
   if (!p.success) return { ok: false, error: "Check the delivery details." };
   const supabase = await createClient();
   const { error } = await supabase.rpc("pos_assign_delivery", { p_order: p.data.o, p_user: p.data.u, p_address: p.data.a || null, p_status: p.data.s });
+  if (error) return { ok: false, error: posError(error.message) };
+  revalidatePath(`/pos/order/${p.data.o}`);
+  return { ok: true };
+}
+
+/** Add, change or clear (both blank) the business name and TIN of the customer on an order. */
+export async function saveBusiness(customerId: string, orderId: string, businessName: string, tin: string): Promise<ActionResult> {
+  if (!(await guard())) return { ok: false, error: "Not authorised." };
+  const p = z.object({ c: id, o: id, n: z.string().trim().max(120), t: z.string().trim().max(40) }).safeParse({ c: customerId, o: orderId, n: businessName, t: tin });
+  if (!p.success) return { ok: false, error: "Check the business details." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("customer_set_business", { p_customer: p.data.c, p_business_name: p.data.n, p_tin: p.data.t });
   if (error) return { ok: false, error: posError(error.message) };
   revalidatePath(`/pos/order/${p.data.o}`);
   return { ok: true };

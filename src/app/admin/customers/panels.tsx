@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { adjustPoints, saveLoyalty } from "./actions";
 import { setCreditLimit } from "../credit/actions";
 
-export type CustomerRow = { id: string; name: string; phone: string; points: number; code: string; limit: number; referredBy: string | null };
+export type CustomerRow = { id: string; name: string; phone: string; points: number; code: string; limit: number; business: string | null; referredBy: string | null };
 
 const num = (v: string) => Number(v.replace(/[^0-9.]/g, "")) || 0;
 
@@ -59,6 +59,7 @@ export function CustomerPanels({ outletId, isAdmin, canAdjust, earn, value, bonu
               <li key={c.id} className="flex flex-wrap items-center gap-2 py-2">
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{c.name} · {c.phone}</p>
+                  {c.business && <p className="text-zinc-600">Business: {c.business}</p>}
                   <p className="text-zinc-500">code {c.code}{c.referredBy ? ` · referred by ${c.referredBy}` : ""}</p>
                 </div>
                 <p className="w-24 text-right font-semibold">{c.points} pts</p>
