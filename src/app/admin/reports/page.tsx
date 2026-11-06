@@ -41,7 +41,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       {error || !data ? (
         <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">Could not load the report. Choose a range of up to one year.</p>
       ) : (
-        <ReportView key={`${outlet.id}${from}${to}`} outletId={outlet.id} outletName={outlet.name} from={from} to={to} report={data as unknown as Report} isAdmin={user.isAdmin} />
+        <ReportView key={`${outlet.id}${from}${to}`} outletName={outlet.name} from={from} to={to} report={data as unknown as Report} />
       )}
     </div>
   );

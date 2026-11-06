@@ -191,3 +191,10 @@ Run `supabase/migrations/0014_phase3a_credit_reports.sql` (needs 0013).
 
 - **Credit / on account**: a manager sets a credit limit per customer (Customers & loyalty). At payment, choose *on account* (customer must be on the order). Staff are blocked over the limit; managers can approve more. **Admin → Customer credit** shows what each customer owes with 0–30/31–60/61–90/90+ day ageing, a statement, and records payments received (cash/card/transfer).
 - **Admin → Sales reports** (managers): totals, GST (set % per outlet by an admin; prices are treated as GST-inclusive), by day, payment method, order type, best sellers, cash drawer over/short, CSV download.
+
+## GST per product (0% / 8% / 17%)
+
+Run `supabase/migrations/0015_gst_per_product.sql` (needs 0014).
+
+- **Admin → GST**: set the outlet's default rate (admin; 8 for cafes, 17 for the guesthouse), set a rate for a whole category (manager), or per product. Blank = outlet default.
+- Each sale line keeps the rate at the time it was added; the Sales report shows GST per rate. Prices are treated as GST-inclusive.

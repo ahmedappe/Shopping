@@ -24,6 +24,7 @@ const LINKS = [
   { href: "/admin/customers", label: "Customers & loyalty", icon: Users, roles: ["staff", "manager", "admin"] },
   { href: "/admin/reports", label: "Sales reports", icon: ClipboardList, roles: ["manager", "admin"] },
   { href: "/admin/credit", label: "Customer credit", icon: Users, roles: ["staff", "manager", "admin"] },
+  { href: "/admin/gst", label: "GST", icon: ClipboardList, roles: ["staff", "manager", "admin"] },
   { href: "/admin/pos-setup", label: "POS setup", icon: Settings, roles: ["manager", "admin"] },
   { href: "/admin/suppliers", label: "Suppliers", icon: Truck, roles: ["manager", "admin"] },
   { href: "/admin/categories", label: "Categories", icon: Tags, roles: ["staff", "manager", "admin"] },
