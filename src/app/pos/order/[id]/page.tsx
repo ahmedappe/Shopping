@@ -33,7 +33,7 @@ export default async function PosOrderPage({ params }: { params: Promise<{ id: s
 
   const { data: order } = await supabase
     .from("pos_orders")
-    .select("id, order_no, outlet_id, table_id, order_type, status, guest_name, opened_at, first_sent_at, subtotal, discount, service_charge, total, outlet:outlets(name, slug, service_charge_pct), table:dining_tables(name)")
+    .select("id, order_no, outlet_id, table_id, order_type, status, guest_name, opened_at, first_sent_at, subtotal, discount, service_charge, total, outlet:outlets(name, slug, service_charge_pct, company_id), table:dining_tables(name)")
     .eq("id", id)
     .maybeSingle();
   if (!order) notFound();
@@ -65,7 +65,11 @@ export default async function PosOrderPage({ params }: { params: Promise<{ id: s
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
 
-  const outlet = order.outlet as unknown as { name: string; slug: string; service_charge_pct: number } | null;
+  const outlet = order.outlet as unknown as { name: string; slug: string; service_charge_pct: number; company_id: string | null } | null;
+  const { data: rateRows } = outlet?.company_id
+    ? await supabase.from("currency_rates").select("code, rate_to_mvr").eq("company_id", outlet.company_id).order("code")
+    : { data: [] };
+  const rates = (rateRows ?? []).map((r) => ({ code: r.code as string, rate: Number(r.rate_to_mvr) }));
   const table = order.table as unknown as { name: string } | null;
 
   const data: OrderData = {
@@ -90,7 +94,7 @@ export default async function PosOrderPage({ params }: { params: Promise<{ id: s
   return (
     <main className="mx-auto min-h-dvh max-w-7xl p-3 sm:p-5">
       {data.status === "open" && <AutoRefresh seconds={8} />}
-      <OrderScreen order={data} lines={(items ?? []) as unknown as OrderLine[]} menu={menu} />
+      <OrderScreen rates={rates} order={data} lines={(items ?? []) as unknown as OrderLine[]} menu={menu} />
     </main>
   );
 }

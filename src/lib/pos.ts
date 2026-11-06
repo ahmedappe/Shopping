@@ -26,6 +26,18 @@ export const POS_ERRORS: Record<string, string> = {
   UNDERPAID: "The payments are less than the total.",
   NOT_ADVANCE_ITEM: "This item is not set as made in advance. Turn it on in POS setup.",
   BAD_KIND: "Invalid entry.",
+  NO_CASH_SESSION: "Open the cash drawer first (button on the POS home screen).",
+  NO_RATE: "No exchange rate for that currency. A manager can set it in POS setup.",
+  GIFT_CARD_NOT_FOUND: "Gift card not found or no longer active.",
+  GIFT_CARD_BALANCE: "The gift card does not have enough balance.",
+  SESSION_OPEN: "The cash drawer is already open.",
+  SESSION_CLOSED: "That cash session is already closed.",
+  SESSION_NOT_FOUND: "Cash session not found.",
+  REASON_REQUIRED: "Write a short reason (3+ characters).",
+  BAD_AMOUNT: "Enter a valid amount.",
+  BAD_CURRENCY: "Use a 3-letter currency code, like USD.",
+  BAD_CODE: "Gift card codes are 4-20 letters, numbers or dashes.",
+  CODE_EXISTS: "That gift card code is already used.",
   OVERPAID_NON_CASH: "Card and transfer cannot be more than the total. Only cash gives change.",
 };
 

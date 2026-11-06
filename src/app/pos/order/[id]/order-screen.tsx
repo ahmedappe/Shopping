@@ -52,7 +52,8 @@ export type OrderData = {
   canManage: boolean;
 };
 type Draft = { id: string; qty: number; note: string };
-type Pay = { method: "cash" | "card" | "transfer"; amount: string; reference: string };
+type Pay = { method: "cash" | "card" | "transfer" | "gift_card"; amount: string; reference: string; currency: string };
+export type Rate = { code: string; rate: number };
 
 const STATUS_STYLE: Record<OrderLine["status"], string> = {
   new: "bg-zinc-100 text-zinc-700",
@@ -62,7 +63,7 @@ const STATUS_STYLE: Record<OrderLine["status"], string> = {
   void: "bg-red-100 text-red-700 line-through",
 };
 
-export function OrderScreen({ order, lines, menu }: { order: OrderData; lines: OrderLine[]; menu: MenuItem[] }) {
+export function OrderScreen({ order, lines, menu, rates }: { order: OrderData; lines: OrderLine[]; menu: MenuItem[]; rates: Rate[] }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -71,7 +72,7 @@ export function OrderScreen({ order, lines, menu }: { order: OrderData; lines: O
   const [draft, setDraft] = useState<Draft[]>([]);
   const [paying, setPaying] = useState(false);
   const [discount, setDiscount] = useState("");
-  const [pays, setPays] = useState<Pay[]>([{ method: "cash", amount: "", reference: "" }]);
+  const [pays, setPays] = useState<Pay[]>([{ method: "cash", amount: "", reference: "", currency: "MVR" }]);
 
   const open = order.status === "open";
   const byId = useMemo(() => new Map(menu.map((m) => [m.id, m])), [menu]);
@@ -86,7 +87,9 @@ export function OrderScreen({ order, lines, menu }: { order: OrderData; lines: O
   const discountNum = Math.max(0, Number(discount) || 0);
   const scNow = order.type === "dine_in" ? Math.round(Math.max(order.subtotal - discountNum, 0) * order.serviceChargePct) / 100 : 0;
   const totalNow = Math.max(order.subtotal - discountNum, 0) + scNow;
-  const paidSum = pays.reduce((n, p) => n + (Number(p.amount) || 0), 0);
+  const rateOf = (c: string) => (c === "MVR" ? 1 : rates.find((r) => r.code === c)?.rate ?? 0);
+  const mvrOf = (p: Pay) => Math.round((Number(p.amount) || 0) * rateOf(p.currency) * 100) / 100;
+  const paidSum = pays.reduce((n, p) => n + mvrOf(p), 0);
   const unserved = live.filter((l) => l.status !== "served").length;
 
   function run(fn: () => Promise<{ ok: boolean; error?: string }>, after?: () => void) {
@@ -109,14 +112,14 @@ export function OrderScreen({ order, lines, menu }: { order: OrderData; lines: O
   }
 
   function startPay() {
-    setPays([{ method: "cash", amount: String(order.total), reference: "" }]);
+    setPays([{ method: "cash", amount: String(order.total), reference: "", currency: "MVR" }]);
     setDiscount("");
     setPaying(true);
   }
 
   function confirmPay() {
     run(
-      () => closeOrder(order.id, discountNum, pays.filter((p) => Number(p.amount) > 0).map((p) => ({ method: p.method, amount: Number(p.amount), reference: p.reference || undefined }))),
+      () => closeOrder(order.id, discountNum, pays.filter((p) => Number(p.amount) > 0).map((p) => (p.currency !== "MVR" ? { method: p.method, currency: p.currency, foreignAmount: Number(p.amount), reference: p.reference || undefined } : { method: p.method, amount: Number(p.amount), reference: p.reference || undefined }))),
       () => router.push(`/pos/receipt/${order.id}?auto=1`),
     );
   }
@@ -291,9 +294,9 @@ export function OrderScreen({ order, lines, menu }: { order: OrderData; lines: O
               {pays.map((p, i) => (
                 <div key={i} className="rounded-lg border p-3">
                   <div className="flex gap-2">
-                    {(["cash", "card", "transfer"] as const).map((m) => (
-                      <button key={m} type="button" onClick={() => setPays((x) => x.map((y, j) => (j === i ? { ...y, method: m } : y)))} className={cn("flex-1 rounded-lg border py-2 text-sm font-medium capitalize", p.method === m ? "border-zinc-900 bg-zinc-900 text-white" : "hover:bg-zinc-100")}>
-                        {m}
+                    {(["cash", "card", "transfer", "gift_card"] as const).map((m) => (
+                      <button key={m} type="button" onClick={() => setPays((x) => x.map((y, j) => (j === i ? { ...y, method: m, currency: m === "cash" ? y.currency : "MVR" } : y)))} className={cn("flex-1 rounded-lg border py-2 text-sm font-medium capitalize", p.method === m ? "border-zinc-900 bg-zinc-900 text-white" : "hover:bg-zinc-100")}>
+                        {m === "gift_card" ? "gift card" : m}
                       </button>
                     ))}
                   </div>
@@ -301,12 +304,21 @@ export function OrderScreen({ order, lines, menu }: { order: OrderData; lines: O
                     <input className="input flex-1" inputMode="decimal" placeholder="Amount" value={p.amount} onChange={(e) => setPays((x) => x.map((y, j) => (j === i ? { ...y, amount: e.target.value.replace(/[^0-9.]/g, "") } : y)))} />
                     {pays.length > 1 && <button type="button" className="btn-outline" onClick={() => setPays((x) => x.filter((_, j) => j !== i))}><Trash2 className="size-4" /></button>}
                   </div>
+                  {p.method === "cash" && rates.length > 0 && (
+                    <div className="mt-2 flex items-center gap-2 text-sm">
+                      <select className="input w-28" value={p.currency} onChange={(e) => setPays((x) => x.map((y, j) => (j === i ? { ...y, currency: e.target.value } : y)))}>
+                        <option value="MVR">MVR</option>
+                        {rates.map((r) => <option key={r.code} value={r.code}>{r.code}</option>)}
+                      </select>
+                      {p.currency !== "MVR" && <span className="text-zinc-600">× {rateOf(p.currency)} = {formatPrice(mvrOf(p))}</span>}
+                    </div>
+                  )}
                   {p.method !== "cash" && (
-                    <input className="input mt-2" placeholder={p.method === "card" ? "Card approval / reference no." : "Transfer reference no."} value={p.reference} maxLength={80} onChange={(e) => setPays((x) => x.map((y, j) => (j === i ? { ...y, reference: e.target.value } : y)))} />
+                    <input className="input mt-2" placeholder={p.method === "card" ? "Card approval / reference no." : p.method === "gift_card" ? "Gift card code" : "Transfer reference no."} value={p.reference} maxLength={80} onChange={(e) => setPays((x) => x.map((y, j) => (j === i ? { ...y, reference: e.target.value } : y)))} />
                   )}
                 </div>
               ))}
-              <button type="button" className="btn-outline w-full" onClick={() => setPays((x) => [...x, { method: "card", amount: String(Math.max(totalNow - paidSum, 0).toFixed(2)), reference: "" }])}>
+              <button type="button" className="btn-outline w-full" onClick={() => setPays((x) => [...x, { method: "card", amount: String(Math.max(totalNow - paidSum, 0).toFixed(2)), reference: "", currency: "MVR" }])}>
                 <Plus className="size-4" /> Split with another payment
               </button>
             </div>

@@ -87,7 +87,7 @@ export async function cancelOrder(orderId: string, reason: string): Promise<Acti
 export async function closeOrder(
   orderId: string,
   discount: number,
-  payments: { method: "cash" | "card" | "transfer"; amount: number; reference?: string }[],
+  payments: { method: "cash" | "card" | "transfer" | "gift_card"; amount?: number; currency?: string; foreignAmount?: number; reference?: string }[],
 ): Promise<ActionResult> {
   if (!(await guard())) return { ok: false, error: "Not authorised." };
   const p = z
@@ -95,7 +95,7 @@ export async function closeOrder(
       orderId: id,
       discount: z.number().min(0).max(1_000_000),
       payments: z
-        .array(z.object({ method: z.enum(["cash", "card", "transfer"]), amount: z.number().positive().max(10_000_000), reference: z.string().trim().max(80).optional() }))
+        .array(z.object({ method: z.enum(["cash", "card", "transfer", "gift_card"]), amount: z.number().positive().max(10_000_000).optional(), currency: z.string().regex(/^[A-Z]{3}$/).optional(), foreignAmount: z.number().positive().max(10_000_000).optional(), reference: z.string().trim().max(80).optional() }).refine((x) => x.amount !== undefined || (x.currency && x.foreignAmount !== undefined)))
         .min(1)
         .max(10),
     })
@@ -105,7 +105,7 @@ export async function closeOrder(
   const { error } = await supabase.rpc("pos_close_order", {
     p_order: p.data.orderId,
     p_discount: p.data.discount,
-    p_payments: p.data.payments,
+    p_payments: p.data.payments.map((x) => ({ method: x.method, amount: x.amount, currency: x.currency, foreign_amount: x.foreignAmount, reference: x.reference })),
   });
   if (error) return { ok: false, error: posError(error.message) };
   revalidatePath("/pos");

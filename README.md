@@ -160,3 +160,11 @@ Run `supabase/migrations/0011_phase2b1_production.sql` in the Supabase SQL edito
 - **/kitchen/production**: kitchen/bar log what was made (+1/+5/+10, custom, wasted, set count, undo). Voice entry ("chicken curry 9 and egg roll 12") uses the browser's free speech recognition and always asks to confirm. Making an item uses up its recipe ingredients.
 - **POS**: sales take from ready portions first (no second deduction); any extra goes to the kitchen as normal. Voiding returns portions.
 - **/admin/plan**: big-order ingredient planner (needs vs on hand, copyable shopping list).
+
+## Phase 2B-2a – Cash drawer, gift cards, foreign currency
+
+Run `supabase/migrations/0012_phase2b2_cash_gift_currency.sql` (needs 0011).
+
+- **/pos/cash**: open the drawer with a starting float, cash in/out with a reason, close with a count. Managers see expected vs counted (over/short).
+- **Admin → Gift cards & currency**: issue (auto or typed code), top up, cancel gift cards (shared by all outlets of a company); set exchange rates (e.g. USD); admins can require an open drawer before cash sales.
+- **Payment screen**: new *gift card* method and cash in a foreign currency (recorded in MVR at the saved rate).
