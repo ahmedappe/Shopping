@@ -8,16 +8,16 @@ import type { ActionResult } from "@/lib/types";
 
 const id = z.string().uuid();
 
-export async function saveOutletPos(input: { outletId: string; serviceChargePct: number; header: string; footer: string }): Promise<ActionResult> {
+export async function saveOutletPos(input: { outletId: string; serviceChargePct: number; header: string; footer: string; gstNumber: string }): Promise<ActionResult> {
   if (!(await getAdminOrNull())) return { ok: false, error: "Only an admin can change these." };
   const p = z
-    .object({ outletId: id, serviceChargePct: z.number().min(0).max(100), header: z.string().trim().max(300), footer: z.string().trim().max(300) })
+    .object({ outletId: id, serviceChargePct: z.number().min(0).max(100), header: z.string().trim().max(300), footer: z.string().trim().max(300), gstNumber: z.string().trim().max(40) })
     .safeParse(input);
   if (!p.success) return { ok: false, error: "Service charge must be between 0 and 100." };
   const supabase = await createClient();
   const { error } = await supabase
     .from("outlets")
-    .update({ service_charge_pct: p.data.serviceChargePct, receipt_header: p.data.header || null, receipt_footer: p.data.footer || null })
+    .update({ service_charge_pct: p.data.serviceChargePct, receipt_header: p.data.header || null, receipt_footer: p.data.footer || null, gst_number: p.data.gstNumber || null })
     .eq("id", p.data.outletId);
   if (error) return { ok: false, error: "Could not save." };
   revalidatePath("/admin/pos-setup");
