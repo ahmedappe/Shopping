@@ -1,13 +1,14 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, Minus, Plus, Printer, Search, Send, Trash2, X } from "lucide-react";
+import { ArrowLeft, Camera, Check, Minus, Plus, Printer, Search, Send, Trash2, X } from "lucide-react";
 import { searchItems } from "@/lib/item-search";
 import { cn, formatPrice } from "@/lib/utils";
 import { ITEM_STATUS_LABEL, ORDER_TYPE_LABEL } from "@/lib/pos-labels";
 import { Elapsed } from "@/components/pos/elapsed";
+import { CameraScanner, cameraScanSupported } from "./camera-scanner";
 import { OrderExtras, type DeliveryInfo, type OrderCustomer, type StaffOption } from "./order-extras";
 import { addItems, cancelOrder, closeOrder, setItemStatus, voidItem } from "../../actions";
 
@@ -76,6 +77,11 @@ export function OrderScreen({ order, lines, menu, rates, extras }: { order: Orde
   const [discount, setDiscount] = useState("");
   const [pays, setPays] = useState<Pay[]>([{ method: "cash", amount: "", reference: "", currency: "MVR" }]);
 
+  const [camera, setCamera] = useState(false);
+  const [lastScan, setLastScan] = useState<{ ok: boolean; text: string } | null>(null);
+  const scanQueue = useRef<Map<string, number>>(new Map());
+  const scanTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const open = order.status === "open";
   const byId = useMemo(() => new Map(menu.map((m) => [m.id, m])), [menu]);
   const categories = useMemo(() => ["All", ...Array.from(new Set(menu.map((m) => m.category))).sort()], [menu]);
@@ -107,6 +113,51 @@ export function OrderScreen({ order, lines, menu, rates, extras }: { order: Orde
   function addDraft(id: string) {
     setDraft((d) => (d.some((x) => x.id === id) ? d.map((x) => (x.id === id ? { ...x, qty: x.qty + 1 } : x)) : [...d, { id, qty: 1, note: "" }]));
     if (query) setQuery("");
+  }
+
+  function beep(ok: boolean) {
+    try {
+      const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const ctx = new Ctx();
+      const osc = ctx.createOscillator();
+      osc.frequency.value = ok ? 1000 : 250;
+      osc.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + (ok ? 0.08 : 0.25));
+      setTimeout(() => ctx.close(), 400);
+    } catch {
+      /* no sound is fine */
+    }
+  }
+
+  /**
+   * A scanned barcode / SKU adds one of that item straight to the order.
+   * Items that need the kitchen or bar still go to the draft so notes can be added.
+   * Quick repeated scans are batched into one request.
+   */
+  function scan(raw: string) {
+    const code = raw.trim().toLowerCase();
+    if (!code) return false;
+    const item = menu.find((m) => (m.barcode && m.barcode.toLowerCase() === code) || (m.sku && m.sku.toLowerCase() === code));
+    if (!item) {
+      beep(false);
+      setLastScan({ ok: false, text: `No item with code ${raw.trim()}` });
+      return false;
+    }
+    beep(true);
+    setLastScan({ ok: true, text: `${item.label} · ${formatPrice(item.price)}` });
+    if (item.station) {
+      addDraft(item.id);
+      return true;
+    }
+    scanQueue.current.set(item.id, (scanQueue.current.get(item.id) ?? 0) + 1);
+    if (scanTimer.current) clearTimeout(scanTimer.current);
+    scanTimer.current = setTimeout(() => {
+      const lines = [...scanQueue.current.entries()].map(([variantId, quantity]) => ({ variantId, quantity }));
+      scanQueue.current.clear();
+      run(() => addItems(order.id, lines));
+    }, 400);
+    return true;
   }
 
   function send() {
@@ -156,8 +207,25 @@ export function OrderScreen({ order, lines, menu, rates, extras }: { order: Orde
           <section className="card p-3 sm:p-4">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
-              <input className="input min-h-12 pl-9 text-base" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search menu or scan barcode" autoFocus />
+              <input
+                className="input min-h-12 pl-9 text-base"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && query.trim() && scan(query)) setQuery("");
+                }}
+                placeholder="Search menu or scan barcode"
+                autoFocus
+              />
             </div>
+            {(lastScan || cameraScanSupported()) && (
+              <div className="mt-2 flex items-center gap-2 text-sm">
+                {cameraScanSupported() && (
+                  <button type="button" className="btn-outline" onClick={() => setCamera(true)}><Camera className="size-4" /> Scan with camera</button>
+                )}
+                {lastScan && <span className={lastScan.ok ? "text-emerald-700" : "font-semibold text-red-600"}>{lastScan.ok ? "Added: " : ""}{lastScan.text}</span>}
+              </div>
+            )}
             {!query && (
               <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
                 {categories.map((c) => (
@@ -276,6 +344,8 @@ export function OrderScreen({ order, lines, menu, rates, extras }: { order: Orde
           </div>
         </section>
       </div>
+
+      {camera && <CameraScanner onCode={(c) => scan(c)} onClose={() => setCamera(false)} />}
 
       {paying && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true">
