@@ -177,3 +177,10 @@ Run `supabase/migrations/0013_phase2b3_customers_loyalty_delivery.sql` (needs 00
 - **Admin → Customers & loyalty**: admin sets points per 100 MVR, value of a point, referral bonus (all 0 = off); managers can adjust points with a reason.
 - **Payment screen**: *points* method (needs a customer). Points are earned on money paid; the referrer gets a bonus on the friend's first paid order.
 - **Delivery orders**: pick the delivering staff member, address, and mark assigned / out / delivered.
+
+## Phase 2B-4 – Barcode scanning at the POS
+
+No database change. On the order screen:
+- A USB/Bluetooth scanner (types the code + Enter) or typing a barcode/SKU + Enter adds that item straight to the order; quick repeated scans are batched. Beep for found / low beep for unknown.
+- Kitchen/bar items are added to the draft instead so notes can be added.
+- **Scan with camera** button (Chrome/Edge/Android) keeps the camera open and adds each barcode it sees.
