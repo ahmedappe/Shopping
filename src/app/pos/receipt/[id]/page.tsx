@@ -24,7 +24,7 @@ export default async function ReceiptPage({ params, searchParams }: { params: Pr
       .eq("id", id)
       .maybeSingle(),
     supabase.from("pos_order_items").select("name, unit_price, quantity, status").eq("order_id", id).neq("status", "void").order("created_at"),
-    supabase.from("pos_payments").select("method, amount, reference").eq("order_id", id).order("created_at"),
+    supabase.from("pos_payments").select("method, amount, reference, currency, foreign_amount").eq("order_id", id).order("created_at"),
   ]);
   if (!o) notFound();
 
@@ -66,7 +66,7 @@ export default async function ReceiptPage({ params, searchParams }: { params: Pr
           <>
             <hr className="my-2 border-dashed border-black" />
             {(pays ?? []).map((p, n) => (
-              <Row key={n} l={`${String(p.method).toUpperCase()}${p.reference ? ` (${p.reference})` : ""}`} r={formatPrice(p.amount)} />
+              <Row key={n} l={`${String(p.method).replace("_", " ").toUpperCase()}${p.currency && p.currency !== "MVR" ? ` ${Number(p.foreign_amount)} ${p.currency}` : ""}${p.reference ? ` (${p.method === "gift_card" ? `…${String(p.reference).slice(-4)}` : p.reference})` : ""}`} r={formatPrice(p.amount)} />
             ))}
             {Number(o.change_given) > 0 && <Row l="Change" r={formatPrice(o.change_given)} />}
           </>

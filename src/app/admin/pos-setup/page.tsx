@@ -22,7 +22,7 @@ export default async function PosSetupPage({ searchParams }: { searchParams: Pro
     supabase.from("dining_tables").select("id, name, seats, is_active, qr_token").eq("outlet_id", outlet.id).order("sort_order").order("name"),
     supabase
       .from("outlet_variants")
-      .select("variant_id, station, variant:product_variants!inner(option1, option2, product:products!inner(name, category:categories(name)))")
+      .select("variant_id, station, made_in_advance, ready_reorder, variant:product_variants!inner(option1, option2, product:products!inner(name, category:categories(name)))")
       .eq("outlet_id", outlet.id)
       .eq("is_active", true)
       .limit(2000),
@@ -35,6 +35,8 @@ export default async function PosSetupPage({ searchParams }: { searchParams: Pro
   const stations: StationRow[] = ((variants ?? []) as unknown as {
     variant_id: string;
     station: "kitchen" | "bar" | null;
+    made_in_advance: boolean;
+    ready_reorder: number | null;
     variant: { option1: string | null; option2: string | null; product: { name: string; category: { name: string } | null } };
   }[])
     .map((v) => ({
@@ -42,6 +44,8 @@ export default async function PosSetupPage({ searchParams }: { searchParams: Pro
       label: `${v.variant.product.name}${variantLabel(v.variant) ? ` · ${variantLabel(v.variant)}` : ""}`,
       category: v.variant.product.category?.name ?? "Other",
       station: v.station,
+      advance: v.made_in_advance,
+      reorder: v.ready_reorder,
     }))
     .sort((a, b) => a.category.localeCompare(b.category) || a.label.localeCompare(b.label));
 

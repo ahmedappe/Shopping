@@ -4,10 +4,10 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ExternalLink, Printer } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { addTable, saveOutletPos, setStation, updateTable } from "./actions";
+import { addTable, saveOutletPos, setAdvance, setStation, updateTable } from "./actions";
 
 export type TableRow = { id: string; name: string; seats: number; active: boolean; token: string };
-export type StationRow = { variantId: string; label: string; category: string; station: "kitchen" | "bar" | null };
+export type StationRow = { variantId: string; label: string; category: string; station: "kitchen" | "bar" | null; advance: boolean; reorder: number | null };
 
 export function OutletSettingsForm({ outletId, canEdit, serviceChargePct, header, footer }: { outletId: string; canEdit: boolean; serviceChargePct: number; header: string; footer: string }) {
   const [pct, setPct] = useState(String(serviceChargePct));
@@ -107,6 +107,7 @@ export function TablesEditor({ outletId, origin, tables }: { outletId: string; o
 export function StationList({ outletId, rows }: { outletId: string; rows: StationRow[] }) {
   const [q, setQ] = useState("");
   const [state, setState] = useState<Record<string, StationRow["station"]>>(() => Object.fromEntries(rows.map((r) => [r.variantId, r.station])));
+  const [adv, setAdv] = useState<Record<string, { on: boolean; reorder: string }>>(() => Object.fromEntries(rows.map((r) => [r.variantId, { on: r.advance, reorder: r.reorder == null ? "" : String(r.reorder) }])));
   const [error, setError] = useState<string | null>(null);
   const [, start] = useTransition();
   const shown = useMemo(() => rows.filter((r) => !q.trim() || r.label.toLowerCase().includes(q.toLowerCase()) || r.category.toLowerCase().includes(q.toLowerCase())), [rows, q]);
@@ -125,6 +126,19 @@ export function StationList({ outletId, rows }: { outletId: string; rows: Statio
     });
   }
 
+  function saveAdv(variantId: string, next: { on: boolean; reorder: string }) {
+    const prev = adv[variantId];
+    setAdv((s) => ({ ...s, [variantId]: next }));
+    setError(null);
+    start(async () => {
+      const res = await setAdvance(outletId, variantId, next.on, next.reorder.trim() === "" ? null : Number(next.reorder));
+      if (!res.ok) {
+        setAdv((s) => ({ ...s, [variantId]: prev }));
+        setError(res.error);
+      }
+    });
+  }
+
   return (
     <section className="card space-y-3 p-4">
       <div>
@@ -135,7 +149,7 @@ export function StationList({ outletId, rows }: { outletId: string; rows: Statio
       {error && <p className="rounded-lg bg-red-50 p-2 text-sm text-red-700">{error}</p>}
       <ul className="divide-y">
         {shown.map((r) => (
-          <li key={r.variantId} className="flex items-center gap-3 py-2">
+          <li key={r.variantId} className="flex flex-wrap items-center gap-3 py-2">
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{r.label}</p>
               <p className="text-xs text-zinc-500">{r.category}</p>
@@ -145,6 +159,26 @@ export function StationList({ outletId, rows }: { outletId: string; rows: Statio
               <option value="kitchen">Kitchen</option>
               <option value="bar">Bar</option>
             </select>
+            {state[r.variantId] ? (
+              <div className="flex items-center gap-2 text-xs">
+                <label className="flex items-center gap-1 whitespace-nowrap">
+                  <input type="checkbox" checked={adv[r.variantId]?.on ?? false} onChange={(e) => saveAdv(r.variantId, { on: e.target.checked, reorder: adv[r.variantId]?.reorder ?? "" })} />
+                  Made in advance
+                </label>
+                {adv[r.variantId]?.on && (
+                  <label className="flex items-center gap-1 whitespace-nowrap">
+                    make more at
+                    <input
+                      className="input h-8 w-14"
+                      inputMode="numeric"
+                      value={adv[r.variantId].reorder}
+                      onChange={(e) => setAdv((s) => ({ ...s, [r.variantId]: { ...s[r.variantId], reorder: e.target.value.replace(/\D/g, "") } }))}
+                      onBlur={() => saveAdv(r.variantId, adv[r.variantId])}
+                    />
+                  </label>
+                )}
+              </div>
+            ) : null}
             {state[r.variantId] && <Check className="size-4 text-emerald-600" />}
           </li>
         ))}

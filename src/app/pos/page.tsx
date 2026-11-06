@@ -73,6 +73,7 @@ export default async function PosPage({ searchParams }: { searchParams: Promise<
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">{outlet.name} · POS</h1>
         <div className="flex flex-wrap items-center gap-2 text-sm">
+          <Link href={`/pos/cash?outlet=${outlet.slug}`} className="btn-outline">Cash drawer</Link>
           <Link href={`/kitchen?outlet=${outlet.slug}&station=kitchen`} className="btn-outline"><ChefHat className="size-4" /> Kitchen</Link>
           <Link href={`/kitchen?outlet=${outlet.slug}&station=bar`} className="btn-outline"><Wine className="size-4" /> Bar</Link>
           {outlets.length > 1 && <Link href="/pos" className="btn-outline">Change outlet</Link>}

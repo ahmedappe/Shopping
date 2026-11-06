@@ -14,6 +14,8 @@ type OvRow = {
   price: number;
   station: "kitchen" | "bar" | null;
   stock: number;
+  made_in_advance: boolean;
+  ready_qty: number;
   variant: {
     option1: string | null;
     option2: string | null;
@@ -31,7 +33,7 @@ export default async function PosOrderPage({ params }: { params: Promise<{ id: s
 
   const { data: order } = await supabase
     .from("pos_orders")
-    .select("id, order_no, outlet_id, table_id, order_type, status, guest_name, opened_at, first_sent_at, subtotal, discount, service_charge, total, outlet:outlets(name, slug, service_charge_pct), table:dining_tables(name)")
+    .select("id, order_no, outlet_id, table_id, order_type, status, guest_name, opened_at, first_sent_at, subtotal, discount, service_charge, total, customer_id, delivery_by, delivery_status, delivery_address, outlet:outlets(name, slug, service_charge_pct, company_id, loyalty_earn_per_100, loyalty_point_value), table:dining_tables(name)")
     .eq("id", id)
     .maybeSingle();
   if (!order) notFound();
@@ -41,7 +43,7 @@ export default async function PosOrderPage({ params }: { params: Promise<{ id: s
     order.status === "open"
       ? supabase
           .from("outlet_variants")
-          .select("variant_id, price, station, stock, variant:product_variants!inner(option1, option2, sku, barcode, product:products!inner(name, category:categories(name)))")
+          .select("variant_id, price, station, stock, made_in_advance, ready_qty, variant:product_variants!inner(option1, option2, sku, barcode, product:products!inner(name, category:categories(name)))")
           .eq("outlet_id", order.outlet_id)
           .eq("is_active", true)
           .limit(2000)
@@ -59,10 +61,25 @@ export default async function PosOrderPage({ params }: { params: Promise<{ id: s
       category: r.variant!.product!.category?.name ?? "Other",
       station: r.station,
       stock: r.station ? null : r.stock,
+      ready: r.made_in_advance ? r.ready_qty : null,
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
 
-  const outlet = order.outlet as unknown as { name: string; slug: string; service_charge_pct: number } | null;
+  const outlet = order.outlet as unknown as { name: string; slug: string; service_charge_pct: number; company_id: string | null; loyalty_earn_per_100: number; loyalty_point_value: number } | null;
+  const { data: rateRows } = outlet?.company_id
+    ? await supabase.from("currency_rates").select("code, rate_to_mvr").eq("company_id", outlet.company_id).order("code")
+    : { data: [] };
+  const rates = (rateRows ?? []).map((r) => ({ code: r.code as string, rate: Number(r.rate_to_mvr) }));
+  const [{ data: custRow }, { data: staffRows }] = await Promise.all([
+    order.customer_id
+      ? supabase.from("outlet_customers").select("id, name, phone, points_balance, referral_code").eq("id", order.customer_id as string).maybeSingle()
+      : Promise.resolve({ data: null }),
+    order.order_type === "delivery" ? supabase.rpc("outlet_staff", { p_outlet: order.outlet_id as string }) : Promise.resolve({ data: [] }),
+  ]);
+  const customer = custRow
+    ? { id: custRow.id as string, name: custRow.name as string, phone: custRow.phone as string, points: Number(custRow.points_balance), referralCode: custRow.referral_code as string }
+    : null;
+  const staff = ((staffRows ?? []) as { user_id: string; name: string }[]).map((s) => ({ id: s.user_id, name: s.name }));
   const table = order.table as unknown as { name: string } | null;
 
   const data: OrderData = {
@@ -87,7 +104,19 @@ export default async function PosOrderPage({ params }: { params: Promise<{ id: s
   return (
     <main className="mx-auto min-h-dvh max-w-7xl p-3 sm:p-5">
       {data.status === "open" && <AutoRefresh seconds={8} />}
-      <OrderScreen order={data} lines={(items ?? []) as unknown as OrderLine[]} menu={menu} />
+      <OrderScreen
+        rates={rates}
+        extras={{
+          orderId: data.id,
+          outletId: order.outlet_id as string,
+          customer,
+          pointValue: Number(outlet?.loyalty_point_value ?? 0),
+          loyaltyOn: Number(outlet?.loyalty_earn_per_100 ?? 0) > 0 || Number(outlet?.loyalty_point_value ?? 0) > 0,
+          isDelivery: data.type === "delivery",
+          delivery: { by: (order.delivery_by as string | null) ?? null, status: (order.delivery_status as "assigned" | "out" | "delivered" | null) ?? null, address: (order.delivery_address as string | null) ?? "" },
+          staff,
+        }}
+        order={data} lines={(items ?? []) as unknown as OrderLine[]} menu={menu} />
     </main>
   );
 }

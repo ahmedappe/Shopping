@@ -151,3 +151,29 @@ Set up once (Admin → **POS setup**): add tables, set the service charge % (din
 - `/pos/receipt/<id>` — 80 mm receipt. For printing with no dialog, start the POS browser with `--kiosk-printing` and set the receipt printer as the default printer.
 
 Not in 2A yet: advance-production counts (e.g. "9 chicken curry made"), voice entry, retail barcode POS extras, gift cards, multi-currency.
+
+## Phase 2B-1 – Made in advance & planner
+
+Run `supabase/migrations/0011_phase2b1_production.sql` in the Supabase SQL editor.
+
+- **POS setup → Where each item is made**: tick *Made in advance* per item and set "make more at".
+- **/kitchen/production**: kitchen/bar log what was made (+1/+5/+10, custom, wasted, set count, undo). Voice entry ("chicken curry 9 and egg roll 12") uses the browser's free speech recognition and always asks to confirm. Making an item uses up its recipe ingredients.
+- **POS**: sales take from ready portions first (no second deduction); any extra goes to the kitchen as normal. Voiding returns portions.
+- **/admin/plan**: big-order ingredient planner (needs vs on hand, copyable shopping list).
+
+## Phase 2B-2a – Cash drawer, gift cards, foreign currency
+
+Run `supabase/migrations/0012_phase2b2_cash_gift_currency.sql` (needs 0011).
+
+- **/pos/cash**: open the drawer with a starting float, cash in/out with a reason, close with a count. Managers see expected vs counted (over/short).
+- **Admin → Gift cards & currency**: issue (auto or typed code), top up, cancel gift cards (shared by all outlets of a company); set exchange rates (e.g. USD); admins can require an open drawer before cash sales.
+- **Payment screen**: new *gift card* method and cash in a foreign currency (recorded in MVR at the saved rate).
+
+## Phase 2B-3 – Customers, loyalty & referral points, delivery person
+
+Run `supabase/migrations/0013_phase2b3_customers_loyalty_delivery.sql` (needs 0012).
+
+- Customers are kept **separately per outlet**; add or find them on the order screen (name/phone). Each has a referral code.
+- **Admin → Customers & loyalty**: admin sets points per 100 MVR, value of a point, referral bonus (all 0 = off); managers can adjust points with a reason.
+- **Payment screen**: *points* method (needs a customer). Points are earned on money paid; the referrer gets a bonus on the friend's first paid order.
+- **Delivery orders**: pick the delivering staff member, address, and mark assigned / out / delivered.
