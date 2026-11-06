@@ -46,6 +46,9 @@ export const POS_ERRORS: Record<string, string> = {
   BAD_REFERRAL: "That referral code does not exist at this outlet.",
   NOT_DELIVERY: "This is not a delivery order.",
   NO_DRIVER: "Choose who is delivering first.",
+  CREDIT_LIMIT: "That is over the customer's credit limit. A manager can approve it.",
+  OVERPAID_CREDIT: "That is more than the customer owes.",
+  BAD_RANGE: "Choose a date range of up to one year.",
   OVERPAID_NON_CASH: "Card and transfer cannot be more than the total. Only cash gives change.",
 };
 

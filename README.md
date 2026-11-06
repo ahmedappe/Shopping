@@ -184,3 +184,10 @@ No database change. On the order screen:
 - A USB/Bluetooth scanner (types the code + Enter) or typing a barcode/SKU + Enter adds that item straight to the order; quick repeated scans are batched. Beep for found / low beep for unknown.
 - Kitchen/bar items are added to the draft instead so notes can be added.
 - **Scan with camera** button (Chrome/Edge/Android) keeps the camera open and adds each barcode it sees.
+
+## Phase 3A – Customer credit and sales reports
+
+Run `supabase/migrations/0014_phase3a_credit_reports.sql` (needs 0013).
+
+- **Credit / on account**: a manager sets a credit limit per customer (Customers & loyalty). At payment, choose *on account* (customer must be on the order). Staff are blocked over the limit; managers can approve more. **Admin → Customer credit** shows what each customer owes with 0–30/31–60/61–90/90+ day ageing, a statement, and records payments received (cash/card/transfer).
+- **Admin → Sales reports** (managers): totals, GST (set % per outlet by an admin; prices are treated as GST-inclusive), by day, payment method, order type, best sellers, cash drawer over/short, CSV download.

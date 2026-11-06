@@ -88,7 +88,7 @@ export async function cancelOrder(orderId: string, reason: string): Promise<Acti
 export async function closeOrder(
   orderId: string,
   discount: number,
-  payments: { method: "cash" | "card" | "transfer" | "gift_card" | "points"; amount?: number; points?: number; currency?: string; foreignAmount?: number; reference?: string }[],
+  payments: { method: "cash" | "card" | "transfer" | "gift_card" | "points" | "credit"; amount?: number; points?: number; currency?: string; foreignAmount?: number; reference?: string }[],
 ): Promise<ActionResult> {
   if (!(await guard())) return { ok: false, error: "Not authorised." };
   const p = z
@@ -96,7 +96,7 @@ export async function closeOrder(
       orderId: id,
       discount: z.number().min(0).max(1_000_000),
       payments: z
-        .array(z.object({ method: z.enum(["cash", "card", "transfer", "gift_card", "points"]), amount: z.number().positive().max(10_000_000).optional(), points: z.number().int().positive().max(10_000_000).optional(), currency: z.string().regex(/^[A-Z]{3}$/).optional(), foreignAmount: z.number().positive().max(10_000_000).optional(), reference: z.string().trim().max(80).optional() }).refine((x) => x.amount !== undefined || x.points !== undefined || (x.currency && x.foreignAmount !== undefined)))
+        .array(z.object({ method: z.enum(["cash", "card", "transfer", "gift_card", "points", "credit"]), amount: z.number().positive().max(10_000_000).optional(), points: z.number().int().positive().max(10_000_000).optional(), currency: z.string().regex(/^[A-Z]{3}$/).optional(), foreignAmount: z.number().positive().max(10_000_000).optional(), reference: z.string().trim().max(80).optional() }).refine((x) => x.amount !== undefined || x.points !== undefined || (x.currency && x.foreignAmount !== undefined)))
         .min(1)
         .max(10),
     })

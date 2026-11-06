@@ -54,7 +54,7 @@ export type OrderData = {
   canManage: boolean;
 };
 type Draft = { id: string; qty: number; note: string };
-type Pay = { method: "cash" | "card" | "transfer" | "gift_card" | "points"; amount: string; reference: string; currency: string };
+type Pay = { method: "cash" | "card" | "transfer" | "gift_card" | "points" | "credit"; amount: string; reference: string; currency: string };
 export type Rate = { code: string; rate: number };
 export type Extras = { orderId: string; outletId: string; customer: OrderCustomer | null; pointValue: number; loyaltyOn: boolean; isDelivery: boolean; delivery: DeliveryInfo; staff: StaffOption[] };
 
@@ -368,9 +368,9 @@ export function OrderScreen({ order, lines, menu, rates, extras }: { order: Orde
               {pays.map((p, i) => (
                 <div key={i} className="rounded-lg border p-3">
                   <div className="flex gap-2">
-                    {(["cash", "card", "transfer", "gift_card", ...(extras.customer && extras.pointValue > 0 ? ["points" as const] : [])] as const).map((m) => (
+                    {(["cash", "card", "transfer", "gift_card", ...(extras.customer && extras.pointValue > 0 ? ["points" as const] : []), ...(extras.customer && (extras.customer.creditLimit > 0 || extras.customer.creditBalance > 0) ? ["credit" as const] : [])] as const).map((m) => (
                       <button key={m} type="button" onClick={() => setPays((x) => x.map((y, j) => (j === i ? { ...y, method: m, currency: m === "cash" ? y.currency : "MVR" } : y)))} className={cn("flex-1 rounded-lg border py-2 text-sm font-medium capitalize", p.method === m ? "border-zinc-900 bg-zinc-900 text-white" : "hover:bg-zinc-100")}>
-                        {m === "gift_card" ? "gift card" : m}
+                        {m === "gift_card" ? "gift card" : m === "credit" ? "on account" : m}
                       </button>
                     ))}
                   </div>
@@ -388,7 +388,7 @@ export function OrderScreen({ order, lines, menu, rates, extras }: { order: Orde
                       {p.currency !== "MVR" && <span className="text-zinc-600">× {rateOf(p.currency)} = {formatPrice(mvrOf(p))}</span>}
                     </div>
                   )}
-                  {p.method !== "cash" && p.method !== "points" && (
+                  {p.method !== "cash" && p.method !== "points" && p.method !== "credit" && (
                     <input className="input mt-2" placeholder={p.method === "card" ? "Card approval / reference no." : p.method === "gift_card" ? "Gift card code" : "Transfer reference no."} value={p.reference} maxLength={80} onChange={(e) => setPays((x) => x.map((y, j) => (j === i ? { ...y, reference: e.target.value } : y)))} />
                   )}
                 </div>

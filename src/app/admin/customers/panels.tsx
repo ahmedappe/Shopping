@@ -3,8 +3,9 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { adjustPoints, saveLoyalty } from "./actions";
+import { setCreditLimit } from "../credit/actions";
 
-export type CustomerRow = { id: string; name: string; phone: string; points: number; code: string; referredBy: string | null };
+export type CustomerRow = { id: string; name: string; phone: string; points: number; code: string; limit: number; referredBy: string | null };
 
 const num = (v: string) => Number(v.replace(/[^0-9.]/g, "")) || 0;
 
@@ -15,6 +16,7 @@ export function CustomerPanels({ outletId, isAdmin, canAdjust, earn, value, bonu
   const [e, setE] = useState(String(earn));
   const [v, setV] = useState(String(value));
   const [b, setB] = useState(String(bonus));
+  const [lim, setLim] = useState<Record<string, string>>({});
   const [adj, setAdj] = useState<Record<string, { pts: string; why: string }>>({});
 
   function run(fn: () => Promise<{ ok: boolean; error?: string }>, done: string, after?: () => void) {
@@ -60,6 +62,12 @@ export function CustomerPanels({ outletId, isAdmin, canAdjust, earn, value, bonu
                   <p className="text-zinc-500">code {c.code}{c.referredBy ? ` · referred by ${c.referredBy}` : ""}</p>
                 </div>
                 <p className="w-24 text-right font-semibold">{c.points} pts</p>
+                {canAdjust && (
+                  <span className="flex items-center gap-1">
+                    <input className="input h-9 w-24" inputMode="decimal" placeholder="Credit limit" value={lim[c.id] ?? (c.limit ? String(c.limit) : "")} onChange={(x) => setLim((a) => ({ ...a, [c.id]: x.target.value }))} />
+                    <button className="btn-outline" disabled={pending || lim[c.id] === undefined} onClick={() => run(() => setCreditLimit(c.id, num(lim[c.id] ?? "0")), "Credit limit saved.")}>Set</button>
+                  </span>
+                )}
                 {canAdjust && (
                   <>
                     <input className="input h-9 w-20" inputMode="numeric" placeholder="±pts" value={adj[c.id]?.pts ?? ""} onChange={(x) => setAdj((a) => ({ ...a, [c.id]: { pts: x.target.value.replace(/[^0-9-]/g, ""), why: a[c.id]?.why ?? "" } }))} />
