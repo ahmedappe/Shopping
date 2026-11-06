@@ -1,8 +1,9 @@
 -- =====================================================================
--- 0015: GST per product (0%, 8% general, 17% tourism)
---   * products.gst_pct: blank = use the outlet's default rate (outlets.gst_pct)
---   * pos_order_items.gst_pct: the rate is frozen on each sale line when it is added
---   * product_set_gst(), category_set_gst(): managers set rates one by one or by category
+-- 0015: GST — tourism or general sector per outlet, taxable or 0% per product
+--   * outlets.gst_sector: 'general' (taxable items 8%) or 'tourism' (taxable items 17%)
+--   * products.gst_taxable: false = 0% (exempt), true = the outlet's rate
+--   * pos_order_items.gst_pct: the rate actually applied is frozen on each sale line
+--   * product_set_gst(), category_set_gst(), outlet_set_sector()
 --   * sales_report(): GST worked out per item, with a breakdown by rate
 -- Needs 0014 first. Safe to run more than once. Prices are treated as GST-inclusive.
 -- =====================================================================
@@ -14,13 +15,27 @@ begin
   end if;
 end $$;
 
-alter table public.products add column if not exists gst_pct numeric(5,2) check (gst_pct between 0 and 100);
+alter table public.outlets add column if not exists gst_sector text not null default 'general' check (gst_sector in ('general', 'tourism'));
+alter table public.products add column if not exists gst_taxable boolean not null default true;
+do $$
+begin
+  -- an earlier draft of this migration stored a rate per product; keep its meaning (0 = exempt)
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'products' and column_name = 'gst_pct') then
+    execute 'update public.products set gst_taxable = (coalesce(gst_pct, 1) <> 0)';
+    execute 'alter table public.products drop column gst_pct';
+  end if;
+end $$;
+
+-- The tax rate for each sector. Change the numbers here if the law changes.
+create or replace function public.gst_rate_for(p_sector text) returns numeric language sql immutable set search_path = '' as $$
+  select case p_sector when 'tourism' then 17::numeric else 8::numeric end;
+$$;
 alter table public.pos_order_items add column if not exists gst_pct numeric(5,2);
 
 create or replace function public.pos_item_set_gst() returns trigger language plpgsql security definer set search_path = '' as $$
 begin
   if new.gst_pct is null then
-    select coalesce(p.gst_pct, o.gst_pct) into new.gst_pct
+    select case when coalesce(p.gst_taxable, true) then public.gst_rate_for(o.gst_sector) else 0 end into new.gst_pct
       from public.pos_orders po
       join public.outlets o on o.id = po.outlet_id
       left join public.product_variants v on v.id = new.variant_id
@@ -32,24 +47,36 @@ end $$;
 drop trigger if exists pos_order_items_gst on public.pos_order_items;
 create trigger pos_order_items_gst before insert on public.pos_order_items for each row execute function public.pos_item_set_gst();
 
-create or replace function public.product_set_gst(p_product uuid, p_pct numeric)
+drop function if exists public.product_set_gst(uuid, numeric);
+drop function if exists public.category_set_gst(uuid, numeric);
+
+create or replace function public.product_set_gst(p_product uuid, p_taxable boolean)
 returns void language plpgsql security definer set search_path = '' as $$
 begin
   if not public.can_edit_catalog() then raise exception 'FORBIDDEN'; end if;
-  if p_pct is not null and (p_pct < 0 or p_pct > 100) then raise exception 'BAD_AMOUNT'; end if;
-  update public.products set gst_pct = p_pct where id = p_product;
+  if p_taxable is null then raise exception 'BAD_AMOUNT'; end if;
+  update public.products set gst_taxable = p_taxable where id = p_product;
 end $$;
 
-create or replace function public.category_set_gst(p_category uuid, p_pct numeric)
+create or replace function public.category_set_gst(p_category uuid, p_taxable boolean)
 returns int language plpgsql security definer set search_path = '' as $$
 declare n int;
 begin
   if not public.can_manage_store() then raise exception 'FORBIDDEN'; end if;
-  if p_pct is not null and (p_pct < 0 or p_pct > 100) then raise exception 'BAD_AMOUNT'; end if;
-  update public.products set gst_pct = p_pct where category_id = p_category;
+  if p_taxable is null then raise exception 'BAD_AMOUNT'; end if;
+  update public.products set gst_taxable = p_taxable where category_id = p_category;
   get diagnostics n = row_count;
   return n;
 end $$;
+
+create or replace function public.outlet_set_sector(p_outlet uuid, p_sector text)
+returns void language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then raise exception 'FORBIDDEN'; end if;
+  if p_sector not in ('general', 'tourism') then raise exception 'BAD_AMOUNT'; end if;
+  update public.outlets set gst_sector = p_sector, gst_pct = public.gst_rate_for(p_sector) where id = p_outlet;
+end $$;
+update public.outlets set gst_pct = public.gst_rate_for(gst_sector);
 
 create or replace function public.sales_report(p_outlet uuid, p_from date, p_to date)
 returns jsonb language plpgsql stable security definer set search_path = '' as $$
@@ -60,15 +87,18 @@ begin
   if p_from is null or p_to is null or p_to < p_from or p_to - p_from > 366 then raise exception 'BAD_RANGE'; end if;
   v_from := (p_from::text || ' 00:00')::timestamp at time zone 'Indian/Maldives';
   v_to   := ((p_to + 1)::text || ' 00:00')::timestamp at time zone 'Indian/Maldives';
-  select gst_pct into v_gst from public.outlets where id = p_outlet;
+  select public.gst_rate_for(gst_sector) into v_gst from public.outlets where id = p_outlet;
 
   with o as (
     select * from public.pos_orders where outlet_id = p_outlet and status = 'closed' and closed_at >= v_from and closed_at < v_to
   ), lines as (
     -- each item's share of the order total (discount and service charge spread pro rata), taxed at its own rate
     select i.quantity * i.unit_price * (case when o.subtotal > 0 then o.total / o.subtotal else 1 end) as gross,
-           coalesce(i.gst_pct, v_gst) as rt
-      from public.pos_order_items i join o on o.id = i.order_id where i.status <> 'void'
+           coalesce(i.gst_pct, case when coalesce(pr.gst_taxable, true) then v_gst else 0 end) as rt
+      from public.pos_order_items i join o on o.id = i.order_id
+      left join public.product_variants pv on pv.id = i.variant_id
+      left join public.products pr on pr.id = pv.product_id
+     where i.status <> 'void'
   ), pay as (
     select p.method, p.currency, sum(p.amount) as amount
       from public.pos_payments p join o on o.id = p.order_id group by p.method, p.currency
@@ -103,5 +133,5 @@ begin
   return r;
 end $$;
 
-revoke all on function public.product_set_gst(uuid, numeric), public.category_set_gst(uuid, numeric), public.sales_report(uuid, date, date), public.pos_item_set_gst() from public, anon;
-grant execute on function public.product_set_gst(uuid, numeric), public.category_set_gst(uuid, numeric), public.sales_report(uuid, date, date) to authenticated;
+revoke all on function public.product_set_gst(uuid, boolean), public.category_set_gst(uuid, boolean), public.outlet_set_sector(uuid, text), public.sales_report(uuid, date, date), public.pos_item_set_gst(), public.gst_rate_for(text) from public, anon;
+grant execute on function public.product_set_gst(uuid, boolean), public.category_set_gst(uuid, boolean), public.outlet_set_sector(uuid, text), public.sales_report(uuid, date, date), public.gst_rate_for(text) to authenticated;
