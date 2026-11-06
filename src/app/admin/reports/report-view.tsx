@@ -1,14 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Download } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
-import { saveGst } from "./actions";
 
 export type Report = {
   orders: number; subtotal: number; discount: number; service_charge: number; total: number; change_given: number;
-  gst_pct: number; gst: number; cancelled: number; voided_items: number; credit_sales: number;
+  gst_pct: number; gst: number; gst_by_rate: { rate: number; gross: number; gst: number }[]; cancelled: number; voided_items: number; credit_sales: number;
   by_day: { day: string; orders: number; total: number }[];
   by_type: { type: string; orders: number; total: number }[];
   by_method: { method: string; currency: string; amount: number }[];
@@ -24,11 +22,7 @@ function csvCell(v: string | number) {
   return /^[=+\-@]/.test(s) || /[",\n]/.test(s) ? `"${(/^[=+\-@]/.test(s) ? "'" + s : s).replace(/"/g, '""')}"` : s;
 }
 
-export function ReportView({ outletId, outletName, from, to, report: r, isAdmin }: { outletId: string; outletName: string; from: string; to: string; report: Report; isAdmin: boolean }) {
-  const router = useRouter();
-  const [pending, start] = useTransition();
-  const [gst, setGst] = useState(String(r.gst_pct));
-  const [err, setErr] = useState<string | null>(null);
+export function ReportView({ outletName, from, to, report: r }: { outletName: string; from: string; to: string; report: Report }) {
   const cashNet = (r.by_method.find((m) => m.method === "cash" && m.currency === "MVR")?.amount ?? 0);
 
   function download() {
@@ -40,7 +34,8 @@ export function ReportView({ outletId, outletName, from, to, report: r, isAdmin 
       ["Discount", r.discount],
       ["Service charge", r.service_charge],
       ["Total", r.total],
-      r.gst_pct > 0 ? [`GST ${r.gst_pct}% (included)`, r.gst] : [],
+      ["GST included", r.gst],
+      ...r.gst_by_rate.map((g) => [`  at ${g.rate}%: sales / GST`, g.gross, g.gst]),
       [],
       ["Day", "Orders", "Total"],
       ...r.by_day.map((d) => [d.day, d.orders, d.total]),
@@ -71,21 +66,14 @@ export function ReportView({ outletId, outletName, from, to, report: r, isAdmin 
         <Stat label="Average order" value={formatPrice(r.orders ? r.total / r.orders : 0)} />
         <Stat label="Discounts" value={formatPrice(r.discount)} />
         <Stat label="Service charge" value={formatPrice(r.service_charge)} />
-        <Stat label={r.gst_pct > 0 ? `GST ${r.gst_pct}% (in price)` : "GST (not set)"} value={formatPrice(r.gst)} />
+        <Stat label="GST (in prices)" value={formatPrice(r.gst)} />
         <Stat label="On account" value={formatPrice(r.credit_sales)} />
         <Stat label="Cancelled / voided" value={`${r.cancelled} / ${r.voided_items}`} />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" className="btn-outline" onClick={download}><Download className="size-4" /> Download CSV</button>
-        {isAdmin && (
-          <span className="flex items-center gap-2 text-sm">
-            GST % in prices
-            <input className="input h-9 w-20" inputMode="decimal" value={gst} onChange={(e) => setGst(e.target.value)} />
-            <button type="button" className="btn-outline" disabled={pending} onClick={() => { setErr(null); start(async () => { const res = await saveGst(outletId, Number(gst) || 0); if (!res.ok) setErr(res.error); else router.refresh(); }); }}>Save</button>
-          </span>
-        )}
-        {err && <span className="text-sm text-red-600">{err}</span>}
+        <Link href="/admin/gst" className="text-sm underline">Set GST rates</Link>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -106,6 +94,14 @@ export function ReportView({ outletId, outletName, from, to, report: r, isAdmin 
           <table className="mt-1 w-full text-sm"><tbody>
             {r.by_type.map((t) => <tr key={t.type}><td className="py-1">{TYPE[t.type] ?? t.type}</td><td className="text-right">{t.orders}</td><td className="text-right font-medium">{formatPrice(t.total)}</td></tr>)}
           </tbody></table>
+        </section>
+        <section className="card p-4">
+          <h2 className="font-semibold">GST by rate</h2>
+          <table className="mt-2 w-full text-sm"><tbody>
+            {r.gst_by_rate.map((g) => <tr key={g.rate}><td className="py-1">{g.rate}%</td><td className="text-right">sales {formatPrice(g.gross)}</td><td className="text-right font-medium">GST {formatPrice(g.gst)}</td></tr>)}
+            {r.gst_by_rate.length === 0 && <tr><td className="py-1 text-zinc-500">No sales in this range.</td></tr>}
+          </tbody></table>
+          <p className="mt-2 text-xs text-zinc-500">Discounts and service charge are shared across the items on each bill. Items sold before per-product rates were set use the outlet default.</p>
         </section>
         <section className="card p-4">
           <h2 className="font-semibold">Best sellers</h2>
