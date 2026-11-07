@@ -199,6 +199,10 @@ Run `supabase/migrations/0015_gst_per_product.sql` (needs 0014).
 - **Admin → GST**: an admin marks each outlet *general sector* (taxable items 8%) or *tourism sector* (17%). Each product is *taxable* or *0% (exempt)*; managers can set a whole category at once.
 - Each sale line keeps the rate applied when it was sold; the Sales report shows GST by rate. Prices are treated as GST-inclusive.
 
+## GST number on receipts
+
+Run `supabase/migrations/0016_outlet_gst_number.sql`. An admin enters the outlet's GST registration number (TIN) in POS setup. Receipts then show "GST TIN" and "TAX INVOICE", and the GST included in the total for each rate.
+
 ## Business customers on receipts
 
 Run `supabase/migrations/0017_customer_business_tin.sql` (needs 0013). On the order screen, tick "Business customer" for a new customer (business name and TIN are required), or use "This is a business" / "Edit business" on an attached customer. The receipt prints the customer's name, and for a business the business name and **Customer TIN**.
