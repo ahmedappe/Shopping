@@ -33,7 +33,7 @@ export function OutletSettingsForm({ outletId, canEdit, serviceChargePct, header
           <textarea className="input" rows={3} maxLength={300} value={f} disabled={!canEdit} onChange={(e) => setF(e.target.value)} />
         </label>
         <label className="sm:col-span-3">
-          <span className="label">GST registration number (TIN) of this outlet's company</span>
+          <span className="label">GST registration number (TIN) of this outlet&apos;s company</span>
           <input className="input sm:max-w-xs" maxLength={40} value={tin} disabled={!canEdit} onChange={(e) => setTin(e.target.value)} placeholder="e.g. 1234567GST501" />
         </label>
       </div>
