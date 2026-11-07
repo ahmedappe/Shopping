@@ -3,9 +3,9 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Bike, UserRound, X } from "lucide-react";
-import { assignDelivery, attachCustomer, detachCustomer, findCustomers, type CustomerHit } from "../../actions";
+import { assignDelivery, attachCustomer, detachCustomer, findCustomers, saveBusiness, type CustomerHit } from "../../actions";
 
-export type OrderCustomer = { id: string; name: string; phone: string; points: number; referralCode: string; creditLimit: number; creditBalance: number };
+export type OrderCustomer = { id: string; name: string; phone: string; points: number; referralCode: string; creditLimit: number; creditBalance: number; businessName: string; tin: string };
 export type DeliveryInfo = { by: string | null; status: "assigned" | "out" | "delivered" | null; address: string };
 export type StaffOption = { id: string; name: string };
 
@@ -32,6 +32,12 @@ export function OrderExtras({ orderId, outletId, open, customer, loyaltyOn, isDe
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [ref, setRef] = useState("");
+  const [isBiz, setIsBiz] = useState(false);
+  const [bizName, setBizName] = useState("");
+  const [tin, setTin] = useState("");
+  const [editBiz, setEditBiz] = useState(false);
+  const [eName, setEName] = useState(customer?.businessName ?? "");
+  const [eTin, setETin] = useState(customer?.tin ?? "");
   const [driver, setDriver] = useState(delivery.by ?? "");
   const [address, setAddress] = useState(delivery.address);
 
@@ -61,6 +67,19 @@ export function OrderExtras({ orderId, outletId, open, customer, loyaltyOn, isDe
             <div>
               <p className="font-medium">{customer.name} · {customer.phone}</p>
               {loyaltyOn && <p className="text-zinc-600">{customer.points} points · referral code {customer.referralCode}</p>}
+              {customer.tin ? <p className="text-zinc-600">Business: {customer.businessName} · TIN {customer.tin}</p> : null}
+              {open && !editBiz && <button type="button" className="text-xs underline" onClick={() => { setEName(customer.businessName); setETin(customer.tin); setEditBiz(true); }}>{customer.tin ? "Edit business" : "This is a business"}</button>}
+              {editBiz && (
+                <div className="mt-1 space-y-1">
+                  <input className="input" placeholder="Business name" value={eName} maxLength={120} onChange={(e) => setEName(e.target.value)} />
+                  <input className="input" placeholder="Business TIN (GST number)" value={eTin} maxLength={40} onChange={(e) => setETin(e.target.value)} />
+                  <div className="flex gap-2">
+                    <button type="button" className="btn-primary" disabled={pending} onClick={() => run(() => saveBusiness(customer.id, orderId, eName, eTin), () => setEditBiz(false))}>Save</button>
+                    <button type="button" className="btn-outline" onClick={() => setEditBiz(false)}>Cancel</button>
+                  </div>
+                  <p className="text-xs text-zinc-500">Leave both blank to make this a normal customer.</p>
+                </div>
+              )}
               {(customer.creditLimit > 0 || customer.creditBalance > 0) && <p className="text-zinc-600">Owes {customer.creditBalance.toFixed(2)} · limit {customer.creditLimit.toFixed(2)}</p>}
             </div>
             {open && (
@@ -89,9 +108,16 @@ export function OrderExtras({ orderId, outletId, open, customer, loyaltyOn, isDe
               <>
                 <input className="input" placeholder="Name" value={name} maxLength={120} onChange={(e) => setName(e.target.value)} />
                 <input className="input" inputMode="tel" placeholder="Phone" value={phone} maxLength={20} onChange={(e) => setPhone(e.target.value)} />
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={isBiz} onChange={(e) => setIsBiz(e.target.checked)} /> Business customer (tax invoice)</label>
+                {isBiz && (
+                  <>
+                    <input className="input" placeholder="Business name" value={bizName} maxLength={120} onChange={(e) => setBizName(e.target.value)} />
+                    <input className="input" placeholder="Business TIN (GST number)" value={tin} maxLength={40} onChange={(e) => setTin(e.target.value)} />
+                  </>
+                )}
                 {loyaltyOn && <input className="input" placeholder="Referral code (if a friend gave one)" value={ref} maxLength={10} onChange={(e) => setRef(e.target.value.toUpperCase())} />}
                 <div className="flex gap-2">
-                  <button type="button" className="btn-primary" disabled={pending || !name || !phone} onClick={() => run(() => attachCustomer(orderId, outletId, { name, phone, referralCode: ref || undefined }), () => { setAdding(false); setName(""); setPhone(""); setRef(""); })}>Save & add</button>
+                  <button type="button" className="btn-primary" disabled={pending || !name || !phone || (isBiz && (!bizName || !tin))} onClick={() => run(() => attachCustomer(orderId, outletId, { name, phone, referralCode: ref || undefined, business: isBiz ? { businessName: bizName, tin } : undefined }), () => { setAdding(false); setName(""); setPhone(""); setRef(""); setIsBiz(false); setBizName(""); setTin(""); })}>Save & add</button>
                   <button type="button" className="btn-outline" onClick={() => setAdding(false)}>Cancel</button>
                 </div>
               </>

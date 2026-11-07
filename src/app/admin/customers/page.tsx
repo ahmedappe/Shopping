@@ -17,13 +17,13 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
 
   const supabase = await createClient();
   const q = sanitizeSearch(sp.q ?? "");
-  let query = supabase.from("outlet_customers").select("id, name, phone, points_balance, referral_code, referred_by, credit_limit, created_at").eq("outlet_id", outlet.id).order("created_at", { ascending: false }).limit(200);
+  let query = supabase.from("outlet_customers").select("id, name, phone, points_balance, referral_code, referred_by, credit_limit, business_name, tin, created_at").eq("outlet_id", outlet.id).order("created_at", { ascending: false }).limit(200);
   if (q) query = query.or(`name.ilike.%${q}%,phone.ilike.%${q}%`);
   const [{ data: rows }, { data: o }] = await Promise.all([
     query,
     supabase.from("outlets").select("loyalty_earn_per_100, loyalty_point_value, loyalty_referral_bonus").eq("id", outlet.id).single(),
   ]);
-  const list = (rows ?? []) as { id: string; name: string; phone: string; points_balance: number; referral_code: string; referred_by: string | null; credit_limit: number }[];
+  const list = (rows ?? []) as { id: string; name: string; phone: string; points_balance: number; referral_code: string; referred_by: string | null; credit_limit: number; business_name: string | null; tin: string | null }[];
   const names = new Map(list.map((c) => [c.id, c.name]));
 
   return (
@@ -46,7 +46,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
         earn={Number(o?.loyalty_earn_per_100 ?? 0)}
         value={Number(o?.loyalty_point_value ?? 0)}
         bonus={Number(o?.loyalty_referral_bonus ?? 0)}
-        customers={list.map<CustomerRow>((c) => ({ id: c.id, name: c.name, phone: c.phone, points: Number(c.points_balance), code: c.referral_code, limit: Number(c.credit_limit), referredBy: c.referred_by ? (names.get(c.referred_by) ?? null) : null }))}
+        customers={list.map<CustomerRow>((c) => ({ id: c.id, name: c.name, phone: c.phone, points: Number(c.points_balance), code: c.referral_code, limit: Number(c.credit_limit), business: c.business_name ? `${c.business_name} · TIN ${c.tin}` : null, referredBy: c.referred_by ? (names.get(c.referred_by) ?? null) : null }))}
       />
     </div>
   );

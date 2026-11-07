@@ -20,7 +20,7 @@ export default async function ReceiptPage({ params, searchParams }: { params: Pr
   const [{ data: o }, { data: items }, { data: pays }] = await Promise.all([
     supabase
       .from("pos_orders")
-      .select("order_no, order_type, status, guest_name, opened_at, closed_at, subtotal, discount, service_charge, total, paid_total, change_given, outlet:outlets(name, slug, service_charge_pct, receipt_header, receipt_footer, gst_number, gst_sector), table:dining_tables(name)")
+      .select("order_no, order_type, status, guest_name, opened_at, closed_at, subtotal, discount, service_charge, total, paid_total, change_given, customer:outlet_customers(name, phone, business_name, tin), outlet:outlets(name, slug, service_charge_pct, receipt_header, receipt_footer, gst_number, gst_sector), table:dining_tables(name)")
       .eq("id", id)
       .maybeSingle(),
     supabase.from("pos_order_items").select("name, unit_price, quantity, status, gst_pct, variant:product_variants(product:products(gst_taxable))").eq("order_id", id).neq("status", "void").order("created_at"),
@@ -30,6 +30,7 @@ export default async function ReceiptPage({ params, searchParams }: { params: Pr
 
   const outlet = o.outlet as unknown as { name: string; slug: string; service_charge_pct: number; receipt_header: string | null; receipt_footer: string | null; gst_number: string | null; gst_sector: "general" | "tourism" };
   const table = o.table as unknown as { name: string } | null;
+  const customer = o.customer as unknown as { name: string; phone: string; business_name: string | null; tin: string | null } | null;
 
   // GST included in the price, per rate. Discount and service charge are spread over the items pro rata.
   const sectorRate = outlet.gst_sector === "tourism" ? 17 : 8;
@@ -59,6 +60,13 @@ export default async function ReceiptPage({ params, searchParams }: { params: Pr
         <p>Receipt: {o.order_no}</p>
         <p>{ORDER_TYPE_LABEL[o.order_type as keyof typeof ORDER_TYPE_LABEL]}{table ? ` · Table ${table.name}` : ""}{o.guest_name ? ` · ${o.guest_name}` : ""}</p>
         <p>{formatDate((o.closed_at as string | null) ?? (o.opened_at as string), true)}</p>
+        {customer && (
+          <p>
+            Customer: {customer.business_name ?? customer.name}
+            {customer.business_name ? ` (attn ${customer.name})` : ""}
+            {customer.tin ? <><br />Customer TIN: {customer.tin}</> : null}
+          </p>
+        )}
         {o.status !== "closed" && <p className="font-bold">*** {String(o.status).toUpperCase()} — NOT PAID ***</p>}
         <hr className="my-2 border-dashed border-black" />
         <table className="w-full">

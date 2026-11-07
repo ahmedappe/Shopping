@@ -49,6 +49,8 @@ export const POS_ERRORS: Record<string, string> = {
   CREDIT_LIMIT: "That is over the customer's credit limit. A manager can approve it.",
   OVERPAID_CREDIT: "That is more than the customer owes.",
   BAD_RANGE: "Choose a date range of up to one year.",
+  TIN_REQUIRED: "Enter the business TIN (3-30 letters, numbers, / or -).",
+  BUSINESS_NAME_REQUIRED: "Enter the business name.",
   OVERPAID_NON_CASH: "Card and transfer cannot be more than the total. Only cash gives change.",
 };
 
